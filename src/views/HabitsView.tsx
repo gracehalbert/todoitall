@@ -1,0 +1,222 @@
+import { useState } from 'react'
+import { useStore, Habit, Frequency } from '../store'
+import Modal from '../components/Modal'
+
+const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4', '#ef4444', '#84cc16']
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+function today() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+export default function HabitsView() {
+  const { habits, categories, addHabit, completeHabit, uncompleteHabit, deleteHabit } = useStore()
+  const [showModal, setShowModal] = useState(false)
+  const [form, setForm] = useState({
+    title: '', description: '', categoryId: '', frequency: 'daily' as Frequency,
+    targetDays: [] as number[], color: COLORS[0], dollars: '1',
+  })
+
+  const handleAdd = () => {
+    if (!form.title.trim() || !form.categoryId) return
+    const dollars = parseFloat(form.dollars)
+    if (isNaN(dollars) || dollars < 0) return
+    addHabit({
+      title: form.title.trim(),
+      description: form.description.trim() || undefined,
+      categoryId: form.categoryId,
+      frequency: form.frequency,
+      targetDays: form.frequency === 'weekly' ? form.targetDays : undefined,
+      color: form.color,
+      points: Math.round(dollars * 100) / 100,
+    })
+    setForm({ title: '', description: '', categoryId: '', frequency: 'daily', targetDays: [], color: COLORS[0], dollars: '1' })
+    setShowModal(false)
+  }
+
+  const t = today()
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-bold">Habits</h2>
+        <button
+          onClick={() => setShowModal(true)}
+          className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium px-3 py-1.5 rounded-lg border-0 cursor-pointer transition-colors"
+        >
+          + Add
+        </button>
+      </div>
+
+      {habits.length === 0 && (
+        <div className="text-center text-gray-600 py-16">
+          <div className="text-4xl mb-2">🔄</div>
+          <p>No habits yet. Add one to start building streaks!</p>
+        </div>
+      )}
+
+      <div className="space-y-3">
+        {habits.map((habit) => (
+          <HabitCard key={habit.id} habit={habit} today={t} onComplete={completeHabit} onUncomplete={uncompleteHabit} onDelete={deleteHabit} />
+        ))}
+      </div>
+
+      {showModal && (
+        <Modal title="New Habit" onClose={() => setShowModal(false)}>
+          <div className="space-y-3">
+            <input
+              placeholder="Habit name"
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-indigo-500"
+            />
+            <input
+              placeholder="Description (optional)"
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-indigo-500"
+            />
+            <select
+              value={form.categoryId}
+              onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-indigo-500"
+            >
+              <option value="">Select category</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
+              ))}
+            </select>
+            <select
+              value={form.frequency}
+              onChange={(e) => setForm({ ...form, frequency: e.target.value as Frequency })}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-indigo-500"
+            >
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly (pick days)</option>
+            </select>
+            {form.frequency === 'weekly' && (
+              <div className="flex gap-1 flex-wrap">
+                {DAYS.map((d, i) => (
+                  <button
+                    key={d}
+                    onClick={() => setForm({
+                      ...form,
+                      targetDays: form.targetDays.includes(i)
+                        ? form.targetDays.filter((x) => x !== i)
+                        : [...form.targetDays, i],
+                    })}
+                    className={`text-xs px-2 py-1 rounded border-0 cursor-pointer transition-colors ${
+                      form.targetDays.includes(i) ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400'
+                    }`}
+                  >
+                    {d}
+                  </button>
+                ))}
+              </div>
+            )}
+            <div>
+              <label className="text-xs text-gray-400 mb-1 block">Color</label>
+              <div className="flex gap-2 flex-wrap">
+                {COLORS.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setForm({ ...form, color: c })}
+                    className={`w-7 h-7 rounded-full border-2 cursor-pointer transition-all ${form.color === c ? 'border-white scale-110' : 'border-transparent'}`}
+                    style={{ backgroundColor: c }}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                value={form.dollars}
+                onChange={(e) => setForm({ ...form, dollars: e.target.value })}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-7 pr-3 py-2 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+            <button
+              onClick={handleAdd}
+              disabled={!form.title.trim() || !form.categoryId}
+              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white font-medium py-2 rounded-lg border-0 cursor-pointer transition-colors"
+            >
+              Add Habit
+            </button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  )
+}
+
+function HabitCard({
+  habit, today, onComplete, onUncomplete, onDelete,
+}: {
+  habit: Habit; today: string
+  onComplete: (id: string, date: string) => void
+  onUncomplete: (id: string, date: string) => void
+  onDelete: (id: string) => void
+}) {
+  const { categories } = useStore()
+  const cat = categories.find((c) => c.id === habit.categoryId)
+  const completedToday = habit.completedDates.includes(today)
+
+  // Last 7 days for streak visualization
+  const last7 = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(Date.now() - (6 - i) * 86400000).toISOString().slice(0, 10)
+    return { date: d, done: habit.completedDates.includes(d) }
+  })
+
+  return (
+    <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-start gap-3">
+          <div className="w-3 h-3 rounded-full mt-1.5 flex-shrink-0" style={{ backgroundColor: habit.color }} />
+          <div>
+            <div className="font-medium text-white text-sm">{habit.title}</div>
+            {habit.description && <div className="text-xs text-gray-500 mt-0.5">{habit.description}</div>}
+            <div className="flex items-center gap-2 mt-1">
+              {cat && <span className="text-xs" style={{ color: cat.color }}>{cat.icon} {cat.name}</span>}
+              <span className="text-xs text-orange-400">🔥 {habit.streak} streak</span>
+              {habit.longestStreak > 0 && <span className="text-xs text-gray-500">best: {habit.longestStreak}</span>}
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => completedToday ? onUncomplete(habit.id, today) : onComplete(habit.id, today)}
+            className={`text-sm px-3 py-1.5 rounded-lg border-0 cursor-pointer font-medium transition-colors ${
+              completedToday
+                ? 'bg-green-500/20 text-green-400'
+                : 'text-white'
+            }`}
+            style={!completedToday ? { backgroundColor: habit.color } : {}}
+          >
+            {completedToday ? '✓ Done' : 'Do it'}
+          </button>
+          <button onClick={() => onDelete(habit.id)} className="text-gray-700 hover:text-red-400 bg-transparent border-0 cursor-pointer text-lg">×</button>
+        </div>
+      </div>
+
+      {/* 7-day mini calendar */}
+      <div className="flex gap-1">
+        {last7.map(({ date, done }) => (
+          <div
+            key={date}
+            title={date}
+            className="flex-1 h-2 rounded-sm"
+            style={{ backgroundColor: done ? habit.color : '#374151' }}
+          />
+        ))}
+      </div>
+      <div className="flex justify-between mt-0.5">
+        <span className="text-xs text-gray-600">7 days ago</span>
+        <span className="text-xs text-gray-600">today</span>
+      </div>
+    </div>
+  )
+}

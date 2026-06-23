@@ -1,0 +1,256 @@
+import { useState } from 'react'
+import { useStore, Task, Priority } from '../store'
+import Modal from '../components/Modal'
+
+const PRIORITY_COLORS: Record<Priority, string> = {
+  high: 'text-red-400',
+  medium: 'text-yellow-400',
+  low: 'text-green-400',
+}
+
+type Filter = 'all' | 'active' | 'completed'
+
+function formatTime(minutes: number): string {
+  if (minutes < 60) return `${minutes}m`
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return m === 0 ? `${h}h` : `${h}h ${m}m`
+}
+
+export default function TasksView() {
+  const { tasks, categories, addTask, completeTask, uncompleteTask, deleteTask } = useStore()
+  const [showModal, setShowModal] = useState(false)
+  const [filterCat, setFilterCat] = useState<string>('all')
+  const [filter, setFilter] = useState<Filter>('active')
+  const [form, setForm] = useState({
+    title: '', description: '', categoryId: '', priority: 'medium' as Priority,
+    dueDate: '', dollars: '1', timeEstimate: '',
+  })
+
+  const filtered = tasks.filter((t) => {
+    if (filterCat !== 'all' && t.categoryId !== filterCat) return false
+    if (filter === 'active') return !t.completed
+    if (filter === 'completed') return t.completed
+    return true
+  })
+
+  const sorted = [...filtered].sort((a, b) => {
+    if (a.completed !== b.completed) return a.completed ? 1 : -1
+    const pOrd = { high: 0, medium: 1, low: 2 }
+    return pOrd[a.priority] - pOrd[b.priority]
+  })
+
+  const handleAdd = () => {
+    const dollars = parseFloat(form.dollars)
+    if (!form.title.trim() || !form.categoryId || isNaN(dollars) || dollars < 0) return
+    const mins = parseInt(form.timeEstimate)
+    addTask({
+      title: form.title.trim(),
+      description: form.description.trim() || undefined,
+      categoryId: form.categoryId,
+      priority: form.priority,
+      dueDate: form.dueDate || undefined,
+      timeEstimate: !isNaN(mins) && mins > 0 ? mins : undefined,
+      points: Math.round(dollars * 100) / 100,
+    })
+    setForm({ title: '', description: '', categoryId: '', priority: 'medium', dueDate: '', dollars: '1', timeEstimate: '' })
+    setShowModal(false)
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-bold">Tasks</h2>
+        <button
+          onClick={() => setShowModal(true)}
+          className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium px-3 py-1.5 rounded-lg border-0 cursor-pointer transition-colors"
+        >
+          + Add
+        </button>
+      </div>
+
+      <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
+        {(['all', 'active', 'completed'] as Filter[]).map((f) => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className={`text-xs px-3 py-1 rounded-full border-0 cursor-pointer whitespace-nowrap transition-colors capitalize ${
+              filter === f ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'
+            }`}
+          >
+            {f}
+          </button>
+        ))}
+      </div>
+      <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
+        <button
+          onClick={() => setFilterCat('all')}
+          className={`text-xs px-3 py-1 rounded-full border-0 cursor-pointer whitespace-nowrap transition-colors ${
+            filterCat === 'all' ? 'bg-gray-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'
+          }`}
+        >
+          All categories
+        </button>
+        {categories.map((cat) => (
+          <button
+            key={cat.id}
+            onClick={() => setFilterCat(cat.id)}
+            className={`text-xs px-3 py-1 rounded-full border-0 cursor-pointer whitespace-nowrap transition-colors ${
+              filterCat === cat.id ? 'text-white' : 'bg-gray-800 text-gray-400 hover:text-white'
+            }`}
+            style={filterCat === cat.id ? { backgroundColor: cat.color } : {}}
+          >
+            {cat.icon} {cat.name}
+          </button>
+        ))}
+      </div>
+
+      {sorted.length === 0 && (
+        <div className="text-center text-gray-600 py-16">
+          <div className="text-4xl mb-2">✓</div>
+          <p>No tasks here</p>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        {sorted.map((task) => (
+          <TaskCard key={task.id} task={task} onComplete={completeTask} onUncomplete={uncompleteTask} onDelete={deleteTask} />
+        ))}
+      </div>
+
+      {showModal && (
+        <Modal title="New Task" onClose={() => setShowModal(false)}>
+          <div className="space-y-3">
+            <input
+              placeholder="Task title"
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-indigo-500"
+            />
+            <input
+              placeholder="Description (optional)"
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-indigo-500"
+            />
+            <select
+              value={form.categoryId}
+              onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-indigo-500"
+            >
+              <option value="">Select category</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
+              ))}
+            </select>
+            <select
+              value={form.priority}
+              onChange={(e) => setForm({ ...form, priority: e.target.value as Priority })}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-indigo-500"
+            >
+              <option value="low">Low priority</option>
+              <option value="medium">Medium priority</option>
+              <option value="high">High priority</option>
+            </select>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={form.dollars}
+                  onChange={(e) => setForm({ ...form, dollars: e.target.value })}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-7 pr-3 py-2 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+              <div className="relative flex-1">
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  placeholder="Time (min)"
+                  value={form.timeEstimate}
+                  onChange={(e) => setForm({ ...form, timeEstimate: e.target.value })}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+            </div>
+            <input
+              type="date"
+              value={form.dueDate}
+              onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-indigo-500"
+            />
+            <button
+              onClick={handleAdd}
+              disabled={!form.title.trim() || !form.categoryId}
+              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white font-medium py-2 rounded-lg border-0 cursor-pointer transition-colors"
+            >
+              Add Task
+            </button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  )
+}
+
+function TaskCard({
+  task,
+  onComplete,
+  onUncomplete,
+  onDelete,
+}: {
+  task: Task
+  onComplete: (id: string) => void
+  onUncomplete: (id: string) => void
+  onDelete: (id: string) => void
+}) {
+  const { categories } = useStore()
+  const cat = categories.find((c) => c.id === task.categoryId)
+
+  return (
+    <div className={`flex items-start gap-3 p-3 rounded-xl border bg-gray-900 ${task.completed ? 'opacity-50' : ''}`}>
+      <button
+        onClick={() => task.completed ? onUncomplete(task.id) : onComplete(task.id)}
+        className={`mt-0.5 w-5 h-5 rounded-full border-2 flex-shrink-0 cursor-pointer transition-colors ${
+          task.completed ? 'bg-indigo-500 border-indigo-500' : 'border-gray-600 bg-transparent hover:border-indigo-400'
+        }`}
+        style={{ minWidth: '1.25rem' }}
+      >
+        {task.completed && <span className="text-white text-xs flex items-center justify-center w-full h-full">✓</span>}
+      </button>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className={`text-sm font-medium ${task.completed ? 'line-through text-gray-500' : 'text-white'}`}>
+            {task.title}
+          </span>
+          <span className={`text-xs ${PRIORITY_COLORS[task.priority]}`}>●</span>
+        </div>
+        {task.description && <p className="text-xs text-gray-500 mt-0.5 truncate">{task.description}</p>}
+        <div className="flex items-center gap-2 mt-1 flex-wrap">
+          {cat && (
+            <span className="text-xs px-1.5 py-0.5 rounded-md" style={{ backgroundColor: cat.color + '33', color: cat.color }}>
+              {cat.icon} {cat.name}
+            </span>
+          )}
+          {task.timeEstimate && (
+            <span className="text-xs text-gray-400">⏱ {formatTime(task.timeEstimate)}</span>
+          )}
+          {task.dueDate && (
+            <span className="text-xs text-gray-500">Due {task.dueDate}</span>
+          )}
+          <span className="text-xs text-green-400">+${task.points.toFixed(2)}</span>
+        </div>
+      </div>
+      <button
+        onClick={() => onDelete(task.id)}
+        className="text-gray-700 hover:text-red-400 text-lg leading-none bg-transparent border-0 cursor-pointer ml-1"
+      >
+        ×
+      </button>
+    </div>
+  )
+}

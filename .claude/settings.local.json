@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create *)",
+      "Bash(npm --version)",
+      "Bash(npm install *)",
+      "Bash(npx tailwindcss *)",
+      "Bash(mkdir -p /Users/gracepowell/todoitall/.claude)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(npx tsc *)"
+    ]
+  }
+}
