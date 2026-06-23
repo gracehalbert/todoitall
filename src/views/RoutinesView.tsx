@@ -31,6 +31,23 @@ export default function RoutinesView() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [stepInput, setStepInput] = useState('')
   const [form, setForm] = useState(EMPTY_FORM)
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set(routines.map((r) => r.id)))
+
+  const allExpanded = routines.length > 0 && routines.every((r) => expandedIds.has(r.id))
+  const toggleExpandAll = () => {
+    if (allExpanded) {
+      setExpandedIds(new Set())
+    } else {
+      setExpandedIds(new Set(routines.map((r) => r.id)))
+    }
+  }
+  const toggleExpand = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -105,12 +122,22 @@ export default function RoutinesView() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold">Routines</h2>
-        <button
-          onClick={openAdd}
-          className="bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium px-3 py-1.5 rounded-lg border-0 cursor-pointer transition-colors"
-        >
-          + Add
-        </button>
+        <div className="flex items-center gap-2">
+          {routines.length > 0 && (
+            <button
+              onClick={toggleExpandAll}
+              className="text-xs text-violet-500 hover:text-violet-700 bg-transparent border-0 cursor-pointer"
+            >
+              {allExpanded ? 'Collapse all' : 'Expand all'}
+            </button>
+          )}
+          <button
+            onClick={openAdd}
+            className="bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium px-3 py-1.5 rounded-lg border-0 cursor-pointer transition-colors"
+          >
+            + Add
+          </button>
+        </div>
       </div>
 
       {routines.length === 0 && (
@@ -127,6 +154,8 @@ export default function RoutinesView() {
               <RoutineCard
                 key={r.id}
                 routine={r}
+                expanded={expandedIds.has(r.id)}
+                onToggleExpand={() => toggleExpand(r.id)}
                 onComplete={completeRoutine}
                 onReset={resetRoutine}
                 onToggleStep={toggleRoutineStep}
@@ -305,9 +334,11 @@ function SortableStep({ step, completedToday, onToggle }: {
 }
 
 function RoutineCard({
-  routine, onComplete, onReset, onToggleStep, onDelete, onEdit, onStepDragEnd,
+  routine, expanded, onToggleExpand, onComplete, onReset, onToggleStep, onDelete, onEdit, onStepDragEnd,
 }: {
   routine: Routine
+  expanded: boolean
+  onToggleExpand: () => void
   onComplete: (id: string, date: string) => void
   onReset: (id: string) => void
   onToggleStep: (routineId: string, stepId: string) => void
@@ -365,6 +396,13 @@ function RoutineCard({
             </div>
           </div>
           <div className="flex items-center gap-1">
+            <button
+              onClick={onToggleExpand}
+              className="text-gray-400 hover:text-gray-600 bg-transparent border-0 cursor-pointer text-xs px-1"
+              title={expanded ? 'Collapse' : 'Expand'}
+            >
+              {expanded ? '▲' : '▼'}
+            </button>
             <button onClick={() => onEdit(routine)} className="text-gray-400 hover:text-violet-500 bg-transparent border-0 cursor-pointer text-sm" title="Edit">✎</button>
             <button onClick={() => onDelete(routine.id)} className="text-gray-300 hover:text-red-400 bg-transparent border-0 cursor-pointer text-lg">×</button>
           </div>
@@ -374,7 +412,7 @@ function RoutineCard({
           <div className="h-full bg-violet-500 rounded-full transition-all" style={{ width: `${progress}%` }} />
         </div>
 
-        <DndContext sensors={stepSensors} collisionDetection={closestCenter} onDragEnd={onStepDragEnd}>
+        {expanded && <DndContext sensors={stepSensors} collisionDetection={closestCenter} onDragEnd={onStepDragEnd}>
           <SortableContext items={routine.steps.map((s) => s.id)} strategy={verticalListSortingStrategy}>
             <div className="space-y-1.5">
               {routine.steps.map((step) => (
@@ -387,10 +425,10 @@ function RoutineCard({
               ))}
             </div>
           </SortableContext>
-        </DndContext>
+        </DndContext>}
       </div>
 
-      {!completedToday && (
+      {!completedToday && expanded && (
         <div className="px-4 pb-4 flex gap-2">
           {allDone ? (
             <button
@@ -411,7 +449,7 @@ function RoutineCard({
           )}
         </div>
       )}
-      {completedToday && (
+      {completedToday && expanded && (
         <div className="px-4 pb-4">
           <div className="text-center text-green-600 text-sm bg-green-50 rounded-lg py-2">✓ Completed today</div>
         </div>
