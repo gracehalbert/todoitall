@@ -1,6 +1,15 @@
 import { useState } from 'react'
 import { useStore, Task, Priority } from '../store'
 import Modal from '../components/Modal'
+import {
+  DndContext, closestCenter, PointerSensor, KeyboardSensor,
+  useSensor, useSensors, DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext, sortableKeyboardCoordinates, useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 const PRIORITY_COLORS: Record<Priority, string> = {
   high: 'text-red-400',
@@ -30,6 +39,11 @@ export default function TasksView() {
   const [filter, setFilter] = useState<Filter>('active')
   const [form, setForm] = useState(EMPTY_FORM)
 
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+
   const filtered = tasks.filter((t) => {
     if (filterCat !== 'all' && t.categoryId !== filterCat) return false
     if (filter === 'active') return !t.completed
@@ -37,8 +51,9 @@ export default function TasksView() {
     return true
   })
 
-  // Only auto-sort when not in 'all' filter (which shows user-defined order)
-  const displayed = filter === 'all'
+  const isDraggable = filter === 'all' && filterCat === 'all'
+
+  const displayed = isDraggable
     ? filtered
     : [...filtered].sort((a, b) => {
         if (a.completed !== b.completed) return a.completed ? 1 : -1
@@ -46,11 +61,7 @@ export default function TasksView() {
         return pOrd[a.priority] - pOrd[b.priority]
       })
 
-  const openAdd = () => {
-    setEditingId(null)
-    setForm(EMPTY_FORM)
-    setShowModal(true)
-  }
+  const openAdd = () => { setEditingId(null); setForm(EMPTY_FORM); setShowModal(true) }
 
   const openEdit = (task: Task) => {
     setEditingId(task.id)
@@ -79,23 +90,18 @@ export default function TasksView() {
       timeEstimate: !isNaN(mins) && mins > 0 ? mins : undefined,
       points: Math.round(dollars * 100) / 100,
     }
-    if (editingId) {
-      updateTask(editingId, data)
-    } else {
-      addTask(data)
-    }
+    if (editingId) { updateTask(editingId, data) } else { addTask(data) }
     setShowModal(false)
   }
 
-  // For reordering, we need to map displayed indices back to global indices
-  const handleReorder = (displayedFrom: number, displayedTo: number) => {
-    const fromId = displayed[displayedFrom]?.id
-    const toId = displayed[displayedTo]?.id
-    if (!fromId || !toId) return
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const fromId = active.id as string
+    const toId = over.id as string
     const globalFrom = tasks.findIndex((t) => t.id === fromId)
     const globalTo = tasks.findIndex((t) => t.id === toId)
-    if (globalFrom === -1 || globalTo === -1) return
-    reorderTasks(globalFrom, globalTo)
+    if (globalFrom !== -1 && globalTo !== -1) reorderTasks(globalFrom, globalTo)
   }
 
   return (
@@ -153,22 +159,23 @@ export default function TasksView() {
         </div>
       )}
 
-      <div className="space-y-2">
-        {displayed.map((task, index) => (
-          <TaskCard
-            key={task.id}
-            task={task}
-            index={index}
-            total={displayed.length}
-            showReorder={filter === 'all' && filterCat === 'all'}
-            onComplete={completeTask}
-            onUncomplete={uncompleteTask}
-            onDelete={deleteTask}
-            onEdit={openEdit}
-            onReorder={handleReorder}
-          />
-        ))}
-      </div>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={displayed.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+          <div className="space-y-2">
+            {displayed.map((task) => (
+              <TaskCard
+                key={task.id}
+                task={task}
+                showHandle={isDraggable}
+                onComplete={completeTask}
+                onUncomplete={uncompleteTask}
+                onDelete={deleteTask}
+                onEdit={openEdit}
+              />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
 
       {showModal && (
         <Modal title={editingId ? 'Edit Task' : 'New Task'} onClose={() => setShowModal(false)}>
@@ -208,10 +215,7 @@ export default function TasksView() {
               <div className="relative flex-1">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
                 <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
+                  type="number" min="0" step="0.01" placeholder="0.00"
                   value={form.dollars}
                   onChange={(e) => setForm({ ...form, dollars: e.target.value })}
                   className="w-full bg-gray-50 border border-gray-200 rounded-lg pl-7 pr-3 py-2 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:border-violet-400"
@@ -219,10 +223,7 @@ export default function TasksView() {
               </div>
               <div className="relative flex-1">
                 <input
-                  type="number"
-                  min="1"
-                  step="1"
-                  placeholder="Time (min)"
+                  type="number" min="1" step="1" placeholder="Time (min)"
                   value={form.timeEstimate}
                   onChange={(e) => setForm({ ...form, timeEstimate: e.target.value })}
                   className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:border-violet-400"
@@ -230,8 +231,7 @@ export default function TasksView() {
               </div>
             </div>
             <input
-              type="date"
-              value={form.dueDate}
+              type="date" value={form.dueDate}
               onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
               className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-gray-900 text-sm focus:outline-none focus:border-violet-400"
             />
@@ -250,35 +250,29 @@ export default function TasksView() {
 }
 
 function TaskCard({
-  task, index, total, showReorder, onComplete, onUncomplete, onDelete, onEdit, onReorder,
+  task, showHandle, onComplete, onUncomplete, onDelete, onEdit,
 }: {
-  task: Task; index: number; total: number; showReorder: boolean
+  task: Task; showHandle: boolean
   onComplete: (id: string) => void
   onUncomplete: (id: string) => void
   onDelete: (id: string) => void
   onEdit: (task: Task) => void
-  onReorder: (from: number, to: number) => void
 }) {
   const { categories } = useStore()
   const cat = categories.find((c) => c.id === task.categoryId)
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id })
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }
 
   return (
-    <div className={`flex items-start gap-2 p-3 rounded-xl border bg-white shadow-sm ${task.completed ? 'opacity-50' : ''}`}>
-      {showReorder && (
-        <div className="flex flex-col gap-0.5 mt-1 flex-shrink-0">
-          <button
-            onClick={() => onReorder(index, index - 1)}
-            disabled={index === 0}
-            className="text-gray-300 hover:text-gray-600 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
-            title="Move up"
-          >▲</button>
-          <button
-            onClick={() => onReorder(index, index + 1)}
-            disabled={index === total - 1}
-            className="text-gray-300 hover:text-gray-600 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
-            title="Move down"
-          >▼</button>
-        </div>
+    <div ref={setNodeRef} style={style} className={`flex items-start gap-2 p-3 rounded-xl border bg-white shadow-sm ${task.completed ? 'opacity-50' : ''}`}>
+      {showHandle && (
+        <button
+          {...attributes} {...listeners}
+          className="mt-1 flex-shrink-0 text-gray-300 hover:text-gray-500 bg-transparent border-0 cursor-grab active:cursor-grabbing touch-none"
+          style={{ fontSize: '1rem', lineHeight: 1, padding: '0 2px' }}
+        >
+          ⠿
+        </button>
       )}
       <button
         onClick={() => task.completed ? onUncomplete(task.id) : onComplete(task.id)}
@@ -303,26 +297,13 @@ function TaskCard({
               {cat.icon} {cat.name}
             </span>
           )}
-          {task.timeEstimate && (
-            <span className="text-xs text-gray-500">⏱ {formatTime(task.timeEstimate)}</span>
-          )}
-          {task.dueDate && (
-            <span className="text-xs text-gray-400">Due {task.dueDate}</span>
-          )}
+          {task.timeEstimate && <span className="text-xs text-gray-500">⏱ {formatTime(task.timeEstimate)}</span>}
+          {task.dueDate && <span className="text-xs text-gray-400">Due {task.dueDate}</span>}
           <span className="text-xs text-green-400">+${task.points.toFixed(2)}</span>
         </div>
       </div>
-      <button
-        onClick={() => onEdit(task)}
-        className="text-gray-400 hover:text-violet-500 bg-transparent border-0 cursor-pointer text-sm mt-0.5"
-        title="Edit"
-      >✎</button>
-      <button
-        onClick={() => onDelete(task.id)}
-        className="text-gray-700 hover:text-red-400 text-lg leading-none bg-transparent border-0 cursor-pointer"
-      >
-        ×
-      </button>
+      <button onClick={() => onEdit(task)} className="text-gray-400 hover:text-violet-500 bg-transparent border-0 cursor-pointer text-sm mt-0.5" title="Edit">✎</button>
+      <button onClick={() => onDelete(task.id)} className="text-gray-700 hover:text-red-400 text-lg leading-none bg-transparent border-0 cursor-pointer">×</button>
     </div>
   )
 }

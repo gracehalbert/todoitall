@@ -1,6 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useStore, Habit, Routine, Task } from '../store'
 import Modal from '../components/Modal'
+import {
+  DndContext, closestCenter, PointerSensor, KeyboardSensor,
+  useSensor, useSensors, DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext, sortableKeyboardCoordinates, useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10)
@@ -29,6 +38,11 @@ export default function TodayView() {
 
   const [showPicker, setShowPicker] = useState(false)
   const [pickerTab, setPickerTab] = useState<'tasks' | 'habits' | 'routines'>('tasks')
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
 
   const t = todayStr()
   const dow = new Date().getDay()
@@ -73,7 +87,6 @@ export default function TodayView() {
     ...allItems.filter((i) => !todayOrder.includes(i.key)),
   ]
 
-  // Persist when new auto items appear
   const allKeysStr = allItems.map((i) => i.key).join(',')
   useEffect(() => {
     const currentKeys = ordered.map((i) => i.key)
@@ -90,12 +103,30 @@ export default function TodayView() {
   const total = displayed.length
   const pct = total > 0 ? Math.round((done / total) * 100) : 0
 
-  const handleReorder = (fromIdx: number, toIdx: number) => {
-    if (fromIdx === toIdx || toIdx < 0 || toIdx >= incomplete.length) return
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const fromIndex = incomplete.findIndex((i) => i.key === active.id)
+    const toIndex = incomplete.findIndex((i) => i.key === over.id)
+    if (fromIndex === -1 || toIndex === -1) return
     const newIncomplete = [...incomplete]
-    const [item] = newIncomplete.splice(fromIdx, 1)
-    newIncomplete.splice(toIdx, 0, item)
+    const [item] = newIncomplete.splice(fromIndex, 1)
+    newIncomplete.splice(toIndex, 0, item)
     setTodayOrder([...newIncomplete, ...complete].map((i) => i.key))
+  }
+
+  const handleStepDragEnd = (routineId: string, event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const r = routines.find((x) => x.id === routineId)
+    if (!r) return
+    const fromIndex = r.steps.findIndex((s) => s.id === active.id)
+    const toIndex = r.steps.findIndex((s) => s.id === over.id)
+    if (fromIndex === -1 || toIndex === -1) return
+    const steps = [...r.steps]
+    const [step] = steps.splice(fromIndex, 1)
+    steps.splice(toIndex, 0, step)
+    updateRoutine(routineId, { steps })
   }
 
   const pickerHabits = habits.filter((h) => !isAutoHabit(h))
@@ -151,76 +182,52 @@ export default function TodayView() {
           <p className="text-xs">Daily habits & routines appear automatically.<br />Use the button below to pull in other items.</p>
         </div>
       ) : (
-        <div className="space-y-2 mb-4">
-          {displayed.map((item) => {
-            const completed = isCompleted(item)
-            const incompleteIdx = incomplete.indexOf(item)
-
-            const reorderEl = completed ? (
-              <div className="w-3 flex-shrink-0" />
-            ) : (
-              <div className="flex flex-col gap-0.5 flex-shrink-0 self-center">
-                <button
-                  onClick={() => handleReorder(incompleteIdx, incompleteIdx - 1)}
-                  disabled={incompleteIdx === 0}
-                  className="text-gray-300 hover:text-gray-500 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
-                >▲</button>
-                <button
-                  onClick={() => handleReorder(incompleteIdx, incompleteIdx + 1)}
-                  disabled={incompleteIdx === incomplete.length - 1}
-                  className="text-gray-300 hover:text-gray-500 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
-                >▼</button>
+        <div className="mb-4">
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={incomplete.map((i) => i.key)} strategy={verticalListSortingStrategy}>
+              <div className="space-y-2">
+                {incomplete.map((item) => (
+                  <SortableTodayItem
+                    key={item.key}
+                    item={item}
+                    today={t}
+                    tomorrow={tomorrow}
+                    onStepDragEnd={(event) => handleStepDragEnd((item.data as Routine).id, event)}
+                    completeHabit={completeHabit}
+                    uncompleteHabit={uncompleteHabit}
+                    toggleRoutineStep={toggleRoutineStep}
+                    completeRoutine={completeRoutine}
+                    resetRoutine={resetRoutine}
+                    completeTask={completeTask}
+                    uncompleteTask={uncompleteTask}
+                    removeFromToday={removeFromToday}
+                  />
+                ))}
               </div>
-            )
-
-            return (
-              <div key={item.key} className={`flex gap-2 ${item.kind === 'routine' ? 'items-start' : 'items-center'}`}>
-                {item.kind === 'routine' ? <div className="mt-3">{reorderEl}</div> : reorderEl}
-                <div className="flex-1">
-                  {item.kind === 'habit' && (
-                    <TodayHabitRow
-                      habit={item.data}
-                      today={t}
-                      isManual={!item.isAuto}
-                      onComplete={completeHabit}
-                      onUncomplete={uncompleteHabit}
-                      onRemove={() => removeFromToday('habit', item.data.id)}
-                    />
-                  )}
-                  {item.kind === 'routine' && (
-                    <TodayRoutineRow
-                      routine={item.data}
-                      today={t}
-                      isManual={!item.isAuto}
-                      onToggleStep={toggleRoutineStep}
-                      onComplete={completeRoutine}
-                      onReset={resetRoutine}
-                      onRemove={() => removeFromToday('routine', item.data.id)}
-                      onReorderStep={(routineId, from, to) => {
-                        const r = routines.find((x) => x.id === routineId)
-                        if (!r) return
-                        const steps = [...r.steps]
-                        const [s] = steps.splice(from, 1)
-                        steps.splice(to, 0, s)
-                        updateRoutine(routineId, { steps })
-                      }}
-                    />
-                  )}
-                  {item.kind === 'task' && (
-                    <TodayTaskRow
-                      task={item.data}
-                      today={t}
-                      tomorrow={tomorrow}
-                      isManual={!item.isAuto}
-                      onComplete={completeTask}
-                      onUncomplete={uncompleteTask}
-                      onRemove={() => removeFromToday('task', item.data.id)}
-                    />
-                  )}
-                </div>
-              </div>
-            )
-          })}
+            </SortableContext>
+          </DndContext>
+          {complete.length > 0 && (
+            <div className="space-y-2 mt-2">
+              {complete.map((item) => (
+                <TodayItemRow
+                  key={item.key}
+                  item={item}
+                  today={t}
+                  tomorrow={tomorrow}
+                  draggable={false}
+                  onStepDragEnd={() => {}}
+                  completeHabit={completeHabit}
+                  uncompleteHabit={uncompleteHabit}
+                  toggleRoutineStep={toggleRoutineStep}
+                  completeRoutine={completeRoutine}
+                  resetRoutine={resetRoutine}
+                  completeTask={completeTask}
+                  uncompleteTask={uncompleteTask}
+                  removeFromToday={removeFromToday}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -305,6 +312,104 @@ export default function TodayView() {
   )
 }
 
+type RowProps = {
+  item: TodayItem
+  today: string
+  tomorrow: string
+  draggable: boolean
+  onStepDragEnd: (event: DragEndEvent) => void
+  completeHabit: (id: string, date: string) => void
+  uncompleteHabit: (id: string, date: string) => void
+  toggleRoutineStep: (routineId: string, stepId: string) => void
+  completeRoutine: (id: string, date: string) => void
+  resetRoutine: (id: string) => void
+  completeTask: (id: string) => void
+  uncompleteTask: (id: string) => void
+  removeFromToday: (type: 'task' | 'habit' | 'routine', id: string) => void
+}
+
+function SortableTodayItem(props: Omit<RowProps, 'draggable'>) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: props.item.key })
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <TodayItemRow {...props} draggable dragHandleProps={{ ...attributes, ...listeners }} />
+    </div>
+  )
+}
+
+function TodayItemRow(props: RowProps & { dragHandleProps?: Record<string, unknown> }) {
+  const { item, today, tomorrow, draggable, dragHandleProps, onStepDragEnd,
+    completeHabit, uncompleteHabit, toggleRoutineStep, completeRoutine, resetRoutine,
+    completeTask, uncompleteTask, removeFromToday } = props
+
+  const dragHandle = draggable ? (
+    <button
+      {...dragHandleProps}
+      className="flex-shrink-0 text-gray-300 hover:text-gray-500 bg-transparent border-0 cursor-grab active:cursor-grabbing touch-none self-center"
+      style={{ fontSize: '1rem', lineHeight: 1, padding: '0 2px' }}
+    >
+      ⠿
+    </button>
+  ) : <div className="w-4 flex-shrink-0" />
+
+  if (item.kind === 'habit') {
+    return (
+      <div className="flex items-center gap-2">
+        {dragHandle}
+        <div className="flex-1">
+          <TodayHabitRow
+            habit={item.data}
+            today={today}
+            isManual={!item.isAuto}
+            onComplete={completeHabit}
+            onUncomplete={uncompleteHabit}
+            onRemove={() => removeFromToday('habit', item.data.id)}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  if (item.kind === 'routine') {
+    return (
+      <div className="flex items-start gap-2">
+        <div className="mt-3">{dragHandle}</div>
+        <div className="flex-1">
+          <TodayRoutineRow
+            routine={item.data}
+            today={today}
+            isManual={!item.isAuto}
+            onToggleStep={toggleRoutineStep}
+            onComplete={completeRoutine}
+            onReset={resetRoutine}
+            onRemove={() => removeFromToday('routine', item.data.id)}
+            onStepDragEnd={onStepDragEnd}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      {dragHandle}
+      <div className="flex-1">
+        <TodayTaskRow
+          task={item.data}
+          today={today}
+          tomorrow={tomorrow}
+          isManual={!item.isAuto}
+          onComplete={completeTask}
+          onUncomplete={uncompleteTask}
+          onRemove={() => removeFromToday('task', item.data.id)}
+        />
+      </div>
+    </div>
+  )
+}
+
 function TodayHabitRow({ habit, today, isManual, onComplete, onUncomplete, onRemove }: {
   habit: Habit; today: string; isManual: boolean
   onComplete: (id: string, date: string) => void
@@ -341,13 +446,43 @@ function TodayHabitRow({ habit, today, isManual, onComplete, onUncomplete, onRem
   )
 }
 
-function TodayRoutineRow({ routine, today, isManual, onToggleStep, onComplete, onReset, onRemove, onReorderStep }: {
+function SortableRoutineStep({ step, completedToday, onToggle }: {
+  step: { id: string; title: string; completed: boolean }
+  completedToday: boolean
+  onToggle: () => void
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: step.id })
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }
+
+  return (
+    <div ref={setNodeRef} style={style} className="flex items-center gap-1">
+      <button
+        {...attributes} {...listeners}
+        className="flex-shrink-0 text-gray-300 hover:text-gray-500 bg-transparent border-0 cursor-grab active:cursor-grabbing touch-none"
+        style={{ fontSize: '1rem', lineHeight: 1, padding: '0 2px' }}
+      >
+        ⠿
+      </button>
+      <button
+        onClick={() => !completedToday && onToggle()}
+        className={`flex-1 flex items-center gap-2.5 text-left bg-transparent border-0 p-1.5 rounded-lg hover:bg-violet-50 transition-colors ${completedToday ? 'cursor-default' : 'cursor-pointer'}`}
+      >
+        <div className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ${step.completed ? 'bg-violet-500 border-violet-500' : 'border-gray-300'}`}>
+          {step.completed && <span className="text-white text-xs">✓</span>}
+        </div>
+        <span className={`text-sm ${step.completed ? 'line-through text-gray-400' : 'text-gray-700'}`}>{step.title}</span>
+      </button>
+    </div>
+  )
+}
+
+function TodayRoutineRow({ routine, today, isManual, onToggleStep, onComplete, onReset, onRemove, onStepDragEnd }: {
   routine: Routine; today: string; isManual: boolean
   onToggleStep: (routineId: string, stepId: string) => void
   onComplete: (id: string, date: string) => void
   onReset: (id: string) => void
   onRemove: () => void
-  onReorderStep: (routineId: string, from: number, to: number) => void
+  onStepDragEnd: (event: DragEndEvent) => void
 }) {
   const { categories } = useStore()
   const cat = categories.find((c) => c.id === routine.categoryId)
@@ -356,6 +491,11 @@ function TodayRoutineRow({ routine, today, isManual, onToggleStep, onComplete, o
   const allDone = completedCount === routine.steps.length
   const progress = routine.steps.length > 0 ? (completedCount / routine.steps.length) * 100 : 0
   const [expanded, setExpanded] = useState(!completedToday)
+
+  const stepSensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
 
   return (
     <div className={`bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden ${completedToday ? 'opacity-50' : ''}`}>
@@ -384,33 +524,20 @@ function TodayRoutineRow({ routine, today, isManual, onToggleStep, onComplete, o
       </div>
       {expanded && (
         <div className="px-3 pb-3 pt-2">
-          <div className="space-y-1.5 mb-2">
-            {routine.steps.map((step, stepIndex) => (
-              <div key={step.id} className="flex items-center gap-1">
-                <div className="flex flex-col gap-0.5 flex-shrink-0">
-                  <button
-                    onClick={() => onReorderStep(routine.id, stepIndex, stepIndex - 1)}
-                    disabled={stepIndex === 0}
-                    className="text-gray-300 hover:text-gray-500 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
-                  >▲</button>
-                  <button
-                    onClick={() => onReorderStep(routine.id, stepIndex, stepIndex + 1)}
-                    disabled={stepIndex === routine.steps.length - 1}
-                    className="text-gray-300 hover:text-gray-500 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
-                  >▼</button>
-                </div>
-                <button
-                  onClick={() => !completedToday && onToggleStep(routine.id, step.id)}
-                  className={`flex-1 flex items-center gap-2.5 text-left bg-transparent border-0 p-1.5 rounded-lg hover:bg-violet-50 transition-colors ${completedToday ? 'cursor-default' : 'cursor-pointer'}`}
-                >
-                  <div className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ${step.completed ? 'bg-violet-500 border-violet-500' : 'border-gray-300'}`}>
-                    {step.completed && <span className="text-white text-xs">✓</span>}
-                  </div>
-                  <span className={`text-sm ${step.completed ? 'line-through text-gray-400' : 'text-gray-700'}`}>{step.title}</span>
-                </button>
+          <DndContext sensors={stepSensors} collisionDetection={closestCenter} onDragEnd={onStepDragEnd}>
+            <SortableContext items={routine.steps.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+              <div className="space-y-1.5 mb-2">
+                {routine.steps.map((step) => (
+                  <SortableRoutineStep
+                    key={step.id}
+                    step={step}
+                    completedToday={completedToday}
+                    onToggle={() => onToggleStep(routine.id, step.id)}
+                  />
+                ))}
               </div>
-            ))}
-          </div>
+            </SortableContext>
+          </DndContext>
           {!completedToday && allDone && (
             <button
               onClick={() => onComplete(routine.id, today)}
