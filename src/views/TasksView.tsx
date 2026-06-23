@@ -28,7 +28,7 @@ function formatTime(minutes: number): string {
 
 const EMPTY_FORM = {
   title: '', description: '', categoryId: '', priority: 'medium' as Priority,
-  dueDate: '', dollars: '1', timeEstimate: '',
+  dueDate: '', dollars: '0', timeEstimate: '',
 }
 
 export default function TasksView() {
