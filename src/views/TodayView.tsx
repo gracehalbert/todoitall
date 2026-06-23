@@ -428,6 +428,7 @@ function TodayHabitRow({ habit, today, isManual, onComplete, onUncomplete, onRem
         <div className="flex items-center gap-2 mt-0.5">
           {cat && <span className="text-xs" style={{ color: cat.color }}>{cat.icon} {cat.name}</span>}
           <span className="text-xs text-orange-400">🔥 {habit.streak}</span>
+          <span className="text-xs text-green-400">+${habit.points.toFixed(2)}</span>
         </div>
       </div>
       <button

@@ -243,6 +243,7 @@ function HabitCard({
               {cat && <span className="text-xs" style={{ color: cat.color }}>{cat.icon} {cat.name}</span>}
               <span className="text-xs text-orange-400">🔥 {habit.streak} streak</span>
               {habit.longestStreak > 0 && <span className="text-xs text-gray-500">best: {habit.longestStreak}</span>}
+              <span className="text-xs text-green-400">+${habit.points.toFixed(2)}</span>
             </div>
           </div>
         </div>
