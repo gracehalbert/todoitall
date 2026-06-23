@@ -39,29 +39,29 @@ export default function SettingsView() {
 
       <section className="mb-6">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Categories</h3>
+          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Categories</h3>
           <button
             onClick={openAdd}
-            className="text-indigo-400 hover:text-indigo-300 text-sm bg-transparent border-0 cursor-pointer"
+            className="text-violet-600 hover:text-violet-500 text-sm bg-transparent border-0 cursor-pointer"
           >
             + Add
           </button>
         </div>
         <div className="space-y-2">
           {categories.map((cat) => (
-            <div key={cat.id} className="flex items-center gap-3 bg-gray-900 border border-gray-800 rounded-xl px-4 py-3">
+            <div key={cat.id} className="flex items-center gap-3 bg-white border border-gray-100 shadow-sm rounded-xl px-4 py-3">
               <span className="text-xl">{cat.icon}</span>
               <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: cat.color }} />
-              <span className="text-white text-sm flex-1">{cat.name}</span>
+              <span className="text-gray-900 text-sm flex-1">{cat.name}</span>
               <button
                 onClick={() => openEdit(cat)}
-                className="text-gray-500 hover:text-white text-xs bg-transparent border-0 cursor-pointer mr-2"
+                className="text-gray-400 hover:text-violet-600 text-xs bg-transparent border-0 cursor-pointer mr-2"
               >
                 Edit
               </button>
               <button
                 onClick={() => deleteCategory(cat.id)}
-                className="text-gray-700 hover:text-red-400 bg-transparent border-0 cursor-pointer text-lg"
+                className="text-gray-300 hover:text-red-400 bg-transparent border-0 cursor-pointer text-lg"
               >
                 ×
               </button>
@@ -70,10 +70,10 @@ export default function SettingsView() {
         </div>
       </section>
 
-      <section className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-sm text-gray-400">
-        <h3 className="text-white font-medium mb-2">About TodoItAll</h3>
+      <section className="bg-white border border-gray-100 shadow-sm rounded-xl p-4 text-sm text-gray-500">
+        <h3 className="text-gray-900 font-medium mb-2">About TodoItAll</h3>
         <p>Your personal task, habit, and routine tracker. All data is stored locally on your device.</p>
-        <p className="mt-2 text-xs text-gray-600">Add to home screen on iPhone: tap Share → "Add to Home Screen" in Safari.</p>
+        <p className="mt-2 text-xs text-gray-400">Add to home screen on iPhone: tap Share → "Add to Home Screen" in Safari.</p>
       </section>
 
       {showModal && (
@@ -87,7 +87,7 @@ export default function SettingsView() {
                     key={ic}
                     onClick={() => setForm({ ...form, icon: ic })}
                     className={`text-xl w-9 h-9 rounded-lg border-0 cursor-pointer transition-all ${
-                      form.icon === ic ? 'bg-indigo-600 scale-110' : 'bg-gray-800 hover:bg-gray-700'
+                      form.icon === ic ? 'bg-violet-100 ring-2 ring-violet-500 scale-110' : 'bg-gray-100 hover:bg-gray-200'
                     }`}
                   >
                     {ic}
@@ -99,7 +99,7 @@ export default function SettingsView() {
               placeholder="Category name"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-indigo-500"
+              className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:border-violet-400"
             />
             <div>
               <label className="text-xs text-gray-400 mb-2 block">Color</label>
@@ -108,21 +108,21 @@ export default function SettingsView() {
                   <button
                     key={c}
                     onClick={() => setForm({ ...form, color: c })}
-                    className={`w-7 h-7 rounded-full border-2 cursor-pointer transition-all ${form.color === c ? 'border-white scale-110' : 'border-transparent'}`}
+                    className={`w-7 h-7 rounded-full border-2 cursor-pointer transition-all ${form.color === c ? 'border-gray-800 scale-110 ring-2 ring-offset-1 ring-gray-400' : 'border-transparent'}`}
                     style={{ backgroundColor: c }}
                   />
                 ))}
               </div>
             </div>
-            <div className="flex items-center gap-3 bg-gray-800 rounded-xl px-4 py-3">
+            <div className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
               <span className="text-2xl">{form.icon}</span>
               <div className="w-3 h-3 rounded-full" style={{ backgroundColor: form.color }} />
-              <span className="text-white">{form.name || 'Preview'}</span>
+              <span className="text-gray-900">{form.name || 'Preview'}</span>
             </div>
             <button
               onClick={handleSave}
               disabled={!form.name.trim()}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white font-medium py-2 rounded-lg border-0 cursor-pointer transition-colors"
+              className="w-full bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white font-medium py-2 rounded-lg border-0 cursor-pointer transition-colors"
             >
               {editing ? 'Save Changes' : 'Add Category'}
             </button>

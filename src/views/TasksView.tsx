@@ -104,7 +104,7 @@ export default function TasksView() {
         <h2 className="text-xl font-bold">Tasks</h2>
         <button
           onClick={openAdd}
-          className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium px-3 py-1.5 rounded-lg border-0 cursor-pointer transition-colors"
+          className="bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium px-3 py-1.5 rounded-lg border-0 cursor-pointer transition-colors"
         >
           + Add
         </button>
@@ -116,7 +116,7 @@ export default function TasksView() {
             key={f}
             onClick={() => setFilter(f)}
             className={`text-xs px-3 py-1 rounded-full border-0 cursor-pointer whitespace-nowrap transition-colors capitalize ${
-              filter === f ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'
+              filter === f ? 'bg-violet-600 text-white' : 'bg-gray-100 text-gray-600 hover:text-white'
             }`}
           >
             {f}
@@ -127,7 +127,7 @@ export default function TasksView() {
         <button
           onClick={() => setFilterCat('all')}
           className={`text-xs px-3 py-1 rounded-full border-0 cursor-pointer whitespace-nowrap transition-colors ${
-            filterCat === 'all' ? 'bg-gray-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'
+            filterCat === 'all' ? 'bg-gray-600 text-white' : 'bg-gray-100 text-gray-600 hover:text-gray-800'
           }`}
         >
           All categories
@@ -147,9 +147,9 @@ export default function TasksView() {
       </div>
 
       {displayed.length === 0 && (
-        <div className="text-center text-gray-600 py-16">
+        <div className="text-center text-gray-400 py-16">
           <div className="text-4xl mb-2">✓</div>
-          <p>No tasks here</p>
+          <p className="text-gray-600">No tasks here</p>
         </div>
       )}
 
@@ -177,18 +177,18 @@ export default function TasksView() {
               placeholder="Task title"
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-indigo-500"
+              className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:border-violet-400"
             />
             <input
               placeholder="Description (optional)"
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-indigo-500"
+              className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:border-violet-400"
             />
             <select
               value={form.categoryId}
               onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-indigo-500"
+              className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-gray-900 text-sm focus:outline-none focus:border-violet-400"
             >
               <option value="">Select category</option>
               {categories.map((c) => (
@@ -198,7 +198,7 @@ export default function TasksView() {
             <select
               value={form.priority}
               onChange={(e) => setForm({ ...form, priority: e.target.value as Priority })}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-indigo-500"
+              className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-gray-900 text-sm focus:outline-none focus:border-violet-400"
             >
               <option value="low">Low priority</option>
               <option value="medium">Medium priority</option>
@@ -214,7 +214,7 @@ export default function TasksView() {
                   placeholder="0.00"
                   value={form.dollars}
                   onChange={(e) => setForm({ ...form, dollars: e.target.value })}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-7 pr-3 py-2 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg pl-7 pr-3 py-2 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:border-violet-400"
                 />
               </div>
               <div className="relative flex-1">
@@ -225,7 +225,7 @@ export default function TasksView() {
                   placeholder="Time (min)"
                   value={form.timeEstimate}
                   onChange={(e) => setForm({ ...form, timeEstimate: e.target.value })}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:border-violet-400"
                 />
               </div>
             </div>
@@ -233,12 +233,12 @@ export default function TasksView() {
               type="date"
               value={form.dueDate}
               onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-indigo-500"
+              className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-gray-900 text-sm focus:outline-none focus:border-violet-400"
             />
             <button
               onClick={handleSave}
               disabled={!form.title.trim() || !form.categoryId}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white font-medium py-2 rounded-lg border-0 cursor-pointer transition-colors"
+              className="w-full bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white font-medium py-2 rounded-lg border-0 cursor-pointer transition-colors"
             >
               {editingId ? 'Save Changes' : 'Add Task'}
             </button>
@@ -263,19 +263,19 @@ function TaskCard({
   const cat = categories.find((c) => c.id === task.categoryId)
 
   return (
-    <div className={`flex items-start gap-2 p-3 rounded-xl border bg-gray-900 ${task.completed ? 'opacity-50' : ''}`}>
+    <div className={`flex items-start gap-2 p-3 rounded-xl border bg-white shadow-sm ${task.completed ? 'opacity-50' : ''}`}>
       {showReorder && (
         <div className="flex flex-col gap-0.5 mt-1 flex-shrink-0">
           <button
             onClick={() => onReorder(index, index - 1)}
             disabled={index === 0}
-            className="text-gray-600 hover:text-gray-400 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
+            className="text-gray-300 hover:text-gray-600 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
             title="Move up"
           >▲</button>
           <button
             onClick={() => onReorder(index, index + 1)}
             disabled={index === total - 1}
-            className="text-gray-600 hover:text-gray-400 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
+            className="text-gray-300 hover:text-gray-600 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
             title="Move down"
           >▼</button>
         </div>
@@ -283,7 +283,7 @@ function TaskCard({
       <button
         onClick={() => task.completed ? onUncomplete(task.id) : onComplete(task.id)}
         className={`mt-0.5 w-5 h-5 rounded-full border-2 flex-shrink-0 cursor-pointer transition-colors ${
-          task.completed ? 'bg-indigo-500 border-indigo-500' : 'border-gray-600 bg-transparent hover:border-indigo-400'
+          task.completed ? 'bg-violet-500 border-violet-500' : 'border-gray-300 bg-transparent hover:border-violet-400'
         }`}
         style={{ minWidth: '1.25rem' }}
       >
@@ -291,12 +291,12 @@ function TaskCard({
       </button>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className={`text-sm font-medium ${task.completed ? 'line-through text-gray-500' : 'text-white'}`}>
+          <span className={`text-sm font-medium ${task.completed ? 'line-through text-gray-400' : 'text-gray-900'}`}>
             {task.title}
           </span>
           <span className={`text-xs ${PRIORITY_COLORS[task.priority]}`}>●</span>
         </div>
-        {task.description && <p className="text-xs text-gray-500 mt-0.5 truncate">{task.description}</p>}
+        {task.description && <p className="text-xs text-gray-400 mt-0.5 truncate">{task.description}</p>}
         <div className="flex items-center gap-2 mt-1 flex-wrap">
           {cat && (
             <span className="text-xs px-1.5 py-0.5 rounded-md" style={{ backgroundColor: cat.color + '33', color: cat.color }}>
@@ -304,17 +304,17 @@ function TaskCard({
             </span>
           )}
           {task.timeEstimate && (
-            <span className="text-xs text-gray-400">⏱ {formatTime(task.timeEstimate)}</span>
+            <span className="text-xs text-gray-500">⏱ {formatTime(task.timeEstimate)}</span>
           )}
           {task.dueDate && (
-            <span className="text-xs text-gray-500">Due {task.dueDate}</span>
+            <span className="text-xs text-gray-400">Due {task.dueDate}</span>
           )}
           <span className="text-xs text-green-400">+${task.points.toFixed(2)}</span>
         </div>
       </div>
       <button
         onClick={() => onEdit(task)}
-        className="text-gray-600 hover:text-indigo-400 bg-transparent border-0 cursor-pointer text-sm mt-0.5"
+        className="text-gray-400 hover:text-violet-500 bg-transparent border-0 cursor-pointer text-sm mt-0.5"
         title="Edit"
       >✎</button>
       <button

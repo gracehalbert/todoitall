@@ -26,20 +26,20 @@ export default function App() {
 
   if (!loaded) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-950 text-gray-400">
+      <div className="flex items-center justify-center min-h-screen bg-violet-50 text-gray-400">
         Loading…
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-950 text-gray-100">
-      <header className="bg-gray-900 border-b border-gray-800 px-4 py-3">
+    <div className="flex flex-col min-h-screen bg-gradient-to-br from-violet-50 via-fuchsia-50 to-sky-50 text-gray-900">
+      <header className="bg-gradient-to-r from-violet-600 to-fuchsia-500 px-4 py-3 shadow-md">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <h1 className="text-lg font-bold text-white">TodoItAll</h1>
-          <div className="flex items-center gap-1 bg-green-500/10 border border-green-500/30 rounded-full px-3 py-1">
-            <span className="text-green-400 text-sm font-bold">$</span>
-            <span className="text-green-300 font-bold text-sm">{totalPoints.toFixed(2)}</span>
+          <div className="flex items-center gap-1 bg-white/20 border border-white/30 rounded-full px-3 py-1">
+            <span className="text-white text-sm font-bold">$</span>
+            <span className="text-white font-bold text-sm">{totalPoints.toFixed(2)}</span>
           </div>
         </div>
       </header>
@@ -53,14 +53,14 @@ export default function App() {
         {tab === 'settings' && <SettingsView />}
       </main>
 
-      <nav className="bg-gray-900 border-t border-gray-800">
+      <nav className="bg-white border-t border-gray-100 shadow-lg">
         <div className="max-w-2xl mx-auto flex">
           {TABS.map((t) => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
               className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 text-xs transition-colors border-0 bg-transparent cursor-pointer ${
-                tab === t.id ? 'text-indigo-400' : 'text-gray-500 hover:text-gray-300'
+                tab === t.id ? 'text-violet-600 font-semibold' : 'text-gray-400 hover:text-gray-600'
               }`}
             >
               <span className="text-base leading-none">{t.icon}</span>

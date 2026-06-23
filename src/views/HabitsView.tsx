@@ -69,16 +69,16 @@ export default function HabitsView() {
         <h2 className="text-xl font-bold">Habits</h2>
         <button
           onClick={openAdd}
-          className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium px-3 py-1.5 rounded-lg border-0 cursor-pointer transition-colors"
+          className="bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium px-3 py-1.5 rounded-lg border-0 cursor-pointer transition-colors"
         >
           + Add
         </button>
       </div>
 
       {habits.length === 0 && (
-        <div className="text-center text-gray-600 py-16">
+        <div className="text-center text-gray-400 py-16">
           <div className="text-4xl mb-2">🔄</div>
-          <p>No habits yet. Add one to start building streaks!</p>
+          <p className="text-gray-600">No habits yet. Add one to start building streaks!</p>
         </div>
       )}
 
@@ -106,18 +106,18 @@ export default function HabitsView() {
               placeholder="Habit name"
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-indigo-500"
+              className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:border-violet-400"
             />
             <input
               placeholder="Description (optional)"
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-indigo-500"
+              className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:border-violet-400"
             />
             <select
               value={form.categoryId}
               onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-indigo-500"
+              className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-gray-900 text-sm focus:outline-none focus:border-violet-400"
             >
               <option value="">Select category</option>
               {categories.map((c) => (
@@ -127,7 +127,7 @@ export default function HabitsView() {
             <select
               value={form.frequency}
               onChange={(e) => setForm({ ...form, frequency: e.target.value as Frequency })}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-indigo-500"
+              className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-gray-900 text-sm focus:outline-none focus:border-violet-400"
             >
               <option value="daily">Daily</option>
               <option value="weekly">Weekly (pick days)</option>
@@ -144,7 +144,7 @@ export default function HabitsView() {
                         : [...form.targetDays, i],
                     })}
                     className={`text-xs px-2 py-1 rounded border-0 cursor-pointer transition-colors ${
-                      form.targetDays.includes(i) ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400'
+                      form.targetDays.includes(i) ? 'bg-violet-600 text-white' : 'bg-gray-100 text-gray-600'
                     }`}
                   >
                     {d}
@@ -159,7 +159,7 @@ export default function HabitsView() {
                   <button
                     key={c}
                     onClick={() => setForm({ ...form, color: c })}
-                    className={`w-7 h-7 rounded-full border-2 cursor-pointer transition-all ${form.color === c ? 'border-white scale-110' : 'border-transparent'}`}
+                    className={`w-7 h-7 rounded-full border-2 cursor-pointer transition-all ${form.color === c ? 'border-gray-800 scale-110 ring-2 ring-offset-1 ring-gray-400' : 'border-transparent'}`}
                     style={{ backgroundColor: c }}
                   />
                 ))}
@@ -174,13 +174,13 @@ export default function HabitsView() {
                 placeholder="0.00"
                 value={form.dollars}
                 onChange={(e) => setForm({ ...form, dollars: e.target.value })}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-7 pr-3 py-2 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-indigo-500"
+                className="w-full bg-gray-50 border border-gray-200 rounded-lg pl-7 pr-3 py-2 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:border-violet-400"
               />
             </div>
             <button
               onClick={handleSave}
               disabled={!form.title.trim() || !form.categoryId}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white font-medium py-2 rounded-lg border-0 cursor-pointer transition-colors"
+              className="w-full bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white font-medium py-2 rounded-lg border-0 cursor-pointer transition-colors"
             >
               {editingId ? 'Save Changes' : 'Add Habit'}
             </button>
@@ -211,27 +211,27 @@ function HabitCard({
   })
 
   return (
-    <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
+    <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-start gap-3">
           <div className="flex flex-col gap-0.5 mt-1">
             <button
               onClick={() => onReorder(index, index - 1)}
               disabled={index === 0}
-              className="text-gray-600 hover:text-gray-400 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
+              className="text-gray-300 hover:text-gray-600 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
               title="Move up"
             >▲</button>
             <button
               onClick={() => onReorder(index, index + 1)}
               disabled={index === total - 1}
-              className="text-gray-600 hover:text-gray-400 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
+              className="text-gray-300 hover:text-gray-600 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
               title="Move down"
             >▼</button>
           </div>
           <div className="w-3 h-3 rounded-full mt-1.5 flex-shrink-0" style={{ backgroundColor: habit.color }} />
           <div>
-            <div className="font-medium text-white text-sm">{habit.title}</div>
-            {habit.description && <div className="text-xs text-gray-500 mt-0.5">{habit.description}</div>}
+            <div className="font-medium text-gray-900 text-sm">{habit.title}</div>
+            {habit.description && <div className="text-xs text-gray-400 mt-0.5">{habit.description}</div>}
             <div className="flex items-center gap-2 mt-1">
               {cat && <span className="text-xs" style={{ color: cat.color }}>{cat.icon} {cat.name}</span>}
               <span className="text-xs text-orange-400">🔥 {habit.streak} streak</span>
@@ -251,10 +251,10 @@ function HabitCard({
           </button>
           <button
             onClick={() => onEdit(habit)}
-            className="text-gray-600 hover:text-indigo-400 bg-transparent border-0 cursor-pointer text-sm px-1"
+            className="text-gray-400 hover:text-violet-500 bg-transparent border-0 cursor-pointer text-sm px-1"
             title="Edit"
           >✎</button>
-          <button onClick={() => onDelete(habit.id)} className="text-gray-700 hover:text-red-400 bg-transparent border-0 cursor-pointer text-lg">×</button>
+          <button onClick={() => onDelete(habit.id)} className="text-gray-300 hover:text-red-400 bg-transparent border-0 cursor-pointer text-lg">×</button>
         </div>
       </div>
 
@@ -264,13 +264,13 @@ function HabitCard({
             key={date}
             title={date}
             className="flex-1 h-2 rounded-sm"
-            style={{ backgroundColor: done ? habit.color : '#374151' }}
+            style={{ backgroundColor: done ? habit.color : '#e9d5ff' }}
           />
         ))}
       </div>
       <div className="flex justify-between mt-0.5">
-        <span className="text-xs text-gray-600">7 days ago</span>
-        <span className="text-xs text-gray-600">today</span>
+        <span className="text-xs text-gray-400">7 days ago</span>
+        <span className="text-xs text-gray-400">today</span>
       </div>
     </div>
   )

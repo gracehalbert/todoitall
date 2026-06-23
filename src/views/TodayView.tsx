@@ -109,13 +109,13 @@ export default function TodayView() {
         {total > 0 && (
           <div className="mt-3">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs text-gray-400">{done}/{total} complete</span>
-              <span className="text-xs font-medium text-indigo-400">{pct}%</span>
+              <span className="text-xs text-gray-500">{done}/{total} complete</span>
+              <span className="text-xs font-medium text-violet-600">{pct}%</span>
             </div>
-            <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+            <div className="h-2 bg-violet-100 rounded-full overflow-hidden">
               <div
                 className="h-full rounded-full transition-all duration-500"
-                style={{ width: `${pct}%`, backgroundColor: pct === 100 ? '#10b981' : '#6366f1' }}
+                style={{ width: `${pct}%`, background: pct === 100 ? '#10b981' : 'linear-gradient(to right, #7c3aed, #d946ef)' }}
               />
             </div>
           </div>
@@ -123,9 +123,9 @@ export default function TodayView() {
       </div>
 
       {displayed.length === 0 ? (
-        <div className="text-center text-gray-600 py-12">
+        <div className="text-center text-gray-400 py-12">
           <div className="text-4xl mb-2">☀️</div>
-          <p className="mb-1">Nothing planned yet.</p>
+          <p className="mb-1 text-gray-600">Nothing planned yet.</p>
           <p className="text-xs">Daily habits & routines appear automatically.<br />Use the button below to pull in other items.</p>
         </div>
       ) : (
@@ -141,12 +141,12 @@ export default function TodayView() {
                 <button
                   onClick={() => handleReorder(incompleteIdx, incompleteIdx - 1)}
                   disabled={incompleteIdx === 0}
-                  className="text-gray-600 hover:text-gray-400 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
+                  className="text-gray-300 hover:text-gray-500 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
                 >▲</button>
                 <button
                   onClick={() => handleReorder(incompleteIdx, incompleteIdx + 1)}
                   disabled={incompleteIdx === incomplete.length - 1}
-                  className="text-gray-600 hover:text-gray-400 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
+                  className="text-gray-300 hover:text-gray-500 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
                 >▼</button>
               </div>
             )
@@ -204,20 +204,20 @@ export default function TodayView() {
 
       <button
         onClick={() => setShowPicker(true)}
-        className="w-full py-2.5 rounded-xl border border-dashed border-gray-700 text-gray-500 hover:text-gray-300 hover:border-gray-500 text-sm transition-colors bg-transparent cursor-pointer"
+        className="w-full py-2.5 rounded-xl border border-dashed border-violet-300 text-violet-400 hover:text-violet-600 hover:border-violet-500 text-sm transition-colors bg-transparent cursor-pointer"
       >
         + Pull in more items
       </button>
 
       {showPicker && (
         <Modal title="Add to Today" onClose={() => setShowPicker(false)}>
-          <div className="flex gap-1 mb-4 bg-gray-800 rounded-lg p-1">
+          <div className="flex gap-1 mb-4 bg-gray-100 rounded-lg p-1">
             {(['tasks', 'habits', 'routines'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setPickerTab(tab)}
                 className={`flex-1 py-1.5 rounded-md text-xs font-medium transition-colors border-0 cursor-pointer capitalize ${
-                  pickerTab === tab ? 'bg-gray-700 text-white' : 'bg-transparent text-gray-400'
+                  pickerTab === tab ? 'bg-white text-violet-700 shadow-sm' : 'bg-transparent text-gray-500'
                 }`}
               >
                 {tab}
@@ -227,7 +227,7 @@ export default function TodayView() {
           <div className="space-y-2 max-h-80 overflow-y-auto">
             {pickerTab === 'tasks' && (
               pickerTasks.length === 0
-                ? <p className="text-center text-gray-600 text-sm py-6">No other incomplete tasks</p>
+                ? <p className="text-center text-gray-400 text-sm py-6">No other incomplete tasks</p>
                 : pickerTasks.map((task) => {
                     const added = manualIds.has(`task:${task.id}`)
                     const cat = categories.find((c) => c.id === task.categoryId)
@@ -244,7 +244,7 @@ export default function TodayView() {
             )}
             {pickerTab === 'habits' && (
               pickerHabits.length === 0
-                ? <p className="text-center text-gray-600 text-sm py-6">No other habits</p>
+                ? <p className="text-center text-gray-400 text-sm py-6">No other habits</p>
                 : pickerHabits.map((habit) => {
                     const added = manualIds.has(`habit:${habit.id}`)
                     return (
@@ -261,7 +261,7 @@ export default function TodayView() {
             )}
             {pickerTab === 'routines' && (
               pickerRoutines.length === 0
-                ? <p className="text-center text-gray-600 text-sm py-6">No other routines</p>
+                ? <p className="text-center text-gray-400 text-sm py-6">No other routines</p>
                 : pickerRoutines.map((routine) => {
                     const added = manualIds.has(`routine:${routine.id}`)
                     const cat = categories.find((c) => c.id === routine.categoryId)
@@ -294,10 +294,10 @@ function TodayHabitRow({ habit, today, isManual, onComplete, onUncomplete, onRem
   const done = habit.completedDates.includes(today)
 
   return (
-    <div className={`flex items-center gap-3 p-3 rounded-xl bg-gray-900 border border-gray-800 ${done ? 'opacity-50' : ''}`}>
+    <div className={`flex items-center gap-3 p-3 rounded-xl bg-white border border-gray-100 shadow-sm ${done ? 'opacity-50' : ''}`}>
       <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: habit.color }} />
       <div className="flex-1 min-w-0">
-        <div className={`text-sm font-medium ${done ? 'line-through text-gray-500' : 'text-white'}`}>{habit.title}</div>
+        <div className={`text-sm font-medium ${done ? 'line-through text-gray-400' : 'text-gray-900'}`}>{habit.title}</div>
         <div className="flex items-center gap-2 mt-0.5">
           {cat && <span className="text-xs" style={{ color: cat.color }}>{cat.icon} {cat.name}</span>}
           <span className="text-xs text-orange-400">🔥 {habit.streak}</span>
@@ -313,7 +313,7 @@ function TodayHabitRow({ habit, today, isManual, onComplete, onUncomplete, onRem
         {done ? '✓' : 'Do it'}
       </button>
       {isManual && (
-        <button onClick={onRemove} className="text-gray-700 hover:text-red-400 bg-transparent border-0 cursor-pointer text-lg leading-none">×</button>
+        <button onClick={onRemove} className="text-gray-300 hover:text-red-400 bg-transparent border-0 cursor-pointer text-lg leading-none">×</button>
       )}
     </div>
   )
@@ -336,29 +336,29 @@ function TodayRoutineRow({ routine, today, isManual, onToggleStep, onComplete, o
   const [expanded, setExpanded] = useState(!completedToday)
 
   return (
-    <div className={`bg-gray-900 rounded-xl border border-gray-800 overflow-hidden ${completedToday ? 'opacity-50' : ''}`}>
+    <div className={`bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden ${completedToday ? 'opacity-50' : ''}`}>
       <button
         onClick={() => setExpanded((v) => !v)}
         className="w-full flex items-center gap-3 p-3 text-left bg-transparent border-0 cursor-pointer"
       >
         <div className="flex-1 min-w-0">
-          <div className={`text-sm font-medium ${completedToday ? 'line-through text-gray-500' : 'text-white'}`}>{routine.title}</div>
+          <div className={`text-sm font-medium ${completedToday ? 'line-through text-gray-400' : 'text-gray-900'}`}>{routine.title}</div>
           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
             {cat && <span className="text-xs" style={{ color: cat.color }}>{cat.icon} {cat.name}</span>}
-            <span className="text-xs text-gray-500">{completedCount}/{routine.steps.length} steps</span>
-            {completedToday && <span className="text-xs text-green-400">✓ done</span>}
+            <span className="text-xs text-gray-400">{completedCount}/{routine.steps.length} steps</span>
+            {completedToday && <span className="text-xs text-green-500">✓ done</span>}
           </div>
         </div>
-        <span className="text-gray-600 text-xs flex-shrink-0">{expanded ? '▲' : '▼'}</span>
+        <span className="text-gray-400 text-xs flex-shrink-0">{expanded ? '▲' : '▼'}</span>
         {isManual && (
           <button
             onClick={(e) => { e.stopPropagation(); onRemove() }}
-            className="text-gray-700 hover:text-red-400 bg-transparent border-0 cursor-pointer text-lg leading-none flex-shrink-0"
+            className="text-gray-300 hover:text-red-400 bg-transparent border-0 cursor-pointer text-lg leading-none flex-shrink-0"
           >×</button>
         )}
       </button>
-      <div className="h-1 bg-gray-800">
-        <div className="h-full bg-indigo-500 transition-all" style={{ width: `${progress}%` }} />
+      <div className="h-1 bg-violet-100">
+        <div className="h-full bg-violet-500 transition-all" style={{ width: `${progress}%` }} />
       </div>
       {expanded && (
         <div className="px-3 pb-3 pt-2">
@@ -369,22 +369,22 @@ function TodayRoutineRow({ routine, today, isManual, onToggleStep, onComplete, o
                   <button
                     onClick={() => onReorderStep(routine.id, stepIndex, stepIndex - 1)}
                     disabled={stepIndex === 0}
-                    className="text-gray-600 hover:text-gray-400 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
+                    className="text-gray-300 hover:text-gray-500 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
                   >▲</button>
                   <button
                     onClick={() => onReorderStep(routine.id, stepIndex, stepIndex + 1)}
                     disabled={stepIndex === routine.steps.length - 1}
-                    className="text-gray-600 hover:text-gray-400 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
+                    className="text-gray-300 hover:text-gray-500 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
                   >▼</button>
                 </div>
                 <button
                   onClick={() => !completedToday && onToggleStep(routine.id, step.id)}
-                  className={`flex-1 flex items-center gap-2.5 text-left bg-transparent border-0 p-1.5 rounded-lg hover:bg-gray-800 transition-colors ${completedToday ? 'cursor-default' : 'cursor-pointer'}`}
+                  className={`flex-1 flex items-center gap-2.5 text-left bg-transparent border-0 p-1.5 rounded-lg hover:bg-violet-50 transition-colors ${completedToday ? 'cursor-default' : 'cursor-pointer'}`}
                 >
-                  <div className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ${step.completed ? 'bg-indigo-500 border-indigo-500' : 'border-gray-600'}`}>
+                  <div className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ${step.completed ? 'bg-violet-500 border-violet-500' : 'border-gray-300'}`}>
                     {step.completed && <span className="text-white text-xs">✓</span>}
                   </div>
-                  <span className={`text-sm ${step.completed ? 'line-through text-gray-500' : 'text-gray-300'}`}>{step.title}</span>
+                  <span className={`text-sm ${step.completed ? 'line-through text-gray-400' : 'text-gray-700'}`}>{step.title}</span>
                 </button>
               </div>
             ))}
@@ -392,13 +392,13 @@ function TodayRoutineRow({ routine, today, isManual, onToggleStep, onComplete, o
           {!completedToday && allDone && (
             <button
               onClick={() => onComplete(routine.id, today)}
-              className="w-full bg-green-600 hover:bg-green-500 text-white text-sm font-medium py-1.5 rounded-lg border-0 cursor-pointer transition-colors"
+              className="w-full bg-green-500 hover:bg-green-400 text-white text-sm font-medium py-1.5 rounded-lg border-0 cursor-pointer transition-colors"
             >
               Complete Routine ✓
             </button>
           )}
           {!completedToday && completedCount > 0 && !allDone && (
-            <button onClick={() => onReset(routine.id)} className="text-gray-600 hover:text-gray-400 text-xs bg-transparent border-0 cursor-pointer">
+            <button onClick={() => onReset(routine.id)} className="text-gray-400 hover:text-gray-600 text-xs bg-transparent border-0 cursor-pointer">
               Reset
             </button>
           )}
@@ -419,11 +419,11 @@ function TodayTaskRow({ task, today, tomorrow, isManual, onComplete, onUncomplet
   const PRIORITY_DOT: Record<string, string> = { high: 'text-red-400', medium: 'text-yellow-400', low: 'text-green-400' }
 
   return (
-    <div className={`flex items-center gap-3 p-3 rounded-xl bg-gray-900 border border-gray-800 ${task.completed ? 'opacity-50' : ''}`}>
+    <div className={`flex items-center gap-3 p-3 rounded-xl bg-white border border-gray-100 shadow-sm ${task.completed ? 'opacity-50' : ''}`}>
       <button
         onClick={() => task.completed ? onUncomplete(task.id) : onComplete(task.id)}
         className={`w-5 h-5 rounded-full border-2 flex-shrink-0 cursor-pointer transition-colors ${
-          task.completed ? 'bg-indigo-500 border-indigo-500' : 'border-gray-600 bg-transparent hover:border-indigo-400'
+          task.completed ? 'bg-violet-500 border-violet-500' : 'border-gray-300 bg-transparent hover:border-violet-400'
         }`}
         style={{ minWidth: '1.25rem' }}
       >
@@ -431,18 +431,18 @@ function TodayTaskRow({ task, today, tomorrow, isManual, onComplete, onUncomplet
       </button>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
-          <span className={`text-sm font-medium ${task.completed ? 'line-through text-gray-500' : 'text-white'}`}>{task.title}</span>
+          <span className={`text-sm font-medium ${task.completed ? 'line-through text-gray-400' : 'text-gray-900'}`}>{task.title}</span>
           <span className={`text-xs ${PRIORITY_DOT[task.priority]}`}>●</span>
         </div>
         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
           {cat && <span className="text-xs" style={{ color: cat.color }}>{cat.icon} {cat.name}</span>}
-          {task.dueDate === today && <span className="text-xs text-red-400">Due today</span>}
-          {task.dueDate === tomorrow && <span className="text-xs text-gray-500">Due tomorrow</span>}
+          {task.dueDate === today && <span className="text-xs text-rose-500">Due today</span>}
+          {task.dueDate === tomorrow && <span className="text-xs text-gray-400">Due tomorrow</span>}
           <span className="text-xs text-green-400">+${task.points.toFixed(2)}</span>
         </div>
       </div>
       {isManual && (
-        <button onClick={onRemove} className="text-gray-700 hover:text-red-400 bg-transparent border-0 cursor-pointer text-lg leading-none">×</button>
+        <button onClick={onRemove} className="text-gray-300 hover:text-red-400 bg-transparent border-0 cursor-pointer text-lg leading-none">×</button>
       )}
     </div>
   )
@@ -455,16 +455,16 @@ function PickerRow({ label, sublabel, color, added, onToggle }: {
     <button
       onClick={onToggle}
       className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left cursor-pointer transition-colors bg-transparent ${
-        added ? 'border-indigo-500 bg-indigo-500/10' : 'border-gray-700 hover:border-gray-600'
+        added ? 'border-violet-400 bg-violet-50' : 'border-gray-200 hover:border-gray-300'
       }`}
     >
       {color && <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />}
       <div className="flex-1 min-w-0">
-        <div className="text-sm text-white font-medium">{label}</div>
+        <div className="text-sm text-gray-900 font-medium">{label}</div>
         {sublabel && <div className="text-xs text-gray-500 mt-0.5 capitalize">{sublabel}</div>}
       </div>
       <div className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
-        added ? 'bg-indigo-500 border-indigo-500' : 'border-gray-600'
+        added ? 'bg-violet-500 border-violet-500' : 'border-gray-300'
       }`}>
         {added && <span className="text-white text-xs">✓</span>}
       </div>

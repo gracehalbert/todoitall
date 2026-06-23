@@ -80,16 +80,16 @@ export default function RoutinesView() {
         <h2 className="text-xl font-bold">Routines</h2>
         <button
           onClick={openAdd}
-          className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium px-3 py-1.5 rounded-lg border-0 cursor-pointer transition-colors"
+          className="bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium px-3 py-1.5 rounded-lg border-0 cursor-pointer transition-colors"
         >
           + Add
         </button>
       </div>
 
       {routines.length === 0 && (
-        <div className="text-center text-gray-600 py-16">
+        <div className="text-center text-gray-400 py-16">
           <div className="text-4xl mb-2">📋</div>
-          <p>No routines yet. Create sequences of steps to run through.</p>
+          <p className="text-gray-600">No routines yet. Create sequences of steps to run through.</p>
         </div>
       )}
 
@@ -125,18 +125,18 @@ export default function RoutinesView() {
               placeholder="Routine name (e.g. Morning routine)"
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-indigo-500"
+              className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:border-violet-400"
             />
             <input
               placeholder="Description (optional)"
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-indigo-500"
+              className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:border-violet-400"
             />
             <select
               value={form.categoryId}
               onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-indigo-500"
+              className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-gray-900 text-sm focus:outline-none focus:border-violet-400"
             >
               <option value="">Select category</option>
               {categories.map((c) => (
@@ -146,7 +146,7 @@ export default function RoutinesView() {
             <select
               value={form.frequency}
               onChange={(e) => setForm({ ...form, frequency: e.target.value as Frequency, targetDays: [] })}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-indigo-500"
+              className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-gray-900 text-sm focus:outline-none focus:border-violet-400"
             >
               <option value="daily">Daily</option>
               <option value="weekly">Weekly</option>
@@ -168,7 +168,7 @@ export default function RoutinesView() {
                           : [...form.targetDays, i],
                       })}
                       className={`text-xs px-2 py-1 rounded border-0 cursor-pointer transition-colors ${
-                        form.targetDays.includes(i) ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400'
+                        form.targetDays.includes(i) ? 'bg-violet-600 text-white' : 'bg-gray-100 text-gray-600'
                       }`}
                     >
                       {d}
@@ -193,7 +193,7 @@ export default function RoutinesView() {
                           : [...form.targetDays, d],
                       })}
                       className={`text-xs w-7 h-7 rounded border-0 cursor-pointer transition-colors ${
-                        form.targetDays.includes(d) ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400'
+                        form.targetDays.includes(d) ? 'bg-violet-600 text-white' : 'bg-gray-100 text-gray-600'
                       }`}
                     >
                       {d}
@@ -207,7 +207,7 @@ export default function RoutinesView() {
               <label className="text-xs text-gray-400 mb-1 block">Steps</label>
               <div className="space-y-1 mb-2">
                 {form.steps.map((step, i) => (
-                  <div key={step.id} className="flex items-center gap-2 bg-gray-800 rounded-lg px-2 py-1.5">
+                  <div key={step.id} className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5">
                     <div className="flex flex-col gap-0.5">
                       <button
                         onClick={() => {
@@ -217,7 +217,7 @@ export default function RoutinesView() {
                           setForm({ ...form, steps })
                         }}
                         disabled={i === 0}
-                        className="text-gray-600 hover:text-gray-400 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
+                        className="text-gray-300 hover:text-gray-600 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
                       >▲</button>
                       <button
                         onClick={() => {
@@ -227,11 +227,11 @@ export default function RoutinesView() {
                           setForm({ ...form, steps })
                         }}
                         disabled={i === form.steps.length - 1}
-                        className="text-gray-600 hover:text-gray-400 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
+                        className="text-gray-300 hover:text-gray-600 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
                       >▼</button>
                     </div>
-                    <span className="text-xs text-gray-300 flex-1">{step.title}</span>
-                    <button onClick={() => removeStep(step.id)} className="text-gray-600 hover:text-red-400 bg-transparent border-0 cursor-pointer">×</button>
+                    <span className="text-xs text-gray-700 flex-1">{step.title}</span>
+                    <button onClick={() => removeStep(step.id)} className="text-gray-400 hover:text-red-400 bg-transparent border-0 cursor-pointer">×</button>
                   </div>
                 ))}
               </div>
@@ -241,11 +241,11 @@ export default function RoutinesView() {
                   value={stepInput}
                   onChange={(e) => setStepInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') addStep() }}
-                  className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-indigo-500"
+                  className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:border-violet-400"
                 />
                 <button
                   onClick={addStep}
-                  className="bg-gray-700 hover:bg-gray-600 text-white text-sm px-3 rounded-lg border-0 cursor-pointer"
+                  className="bg-violet-100 hover:bg-violet-200 text-violet-700 text-sm px-3 rounded-lg border-0 cursor-pointer"
                 >
                   Add
                 </button>
@@ -261,14 +261,14 @@ export default function RoutinesView() {
                 placeholder="0.00"
                 value={form.dollars}
                 onChange={(e) => setForm({ ...form, dollars: e.target.value })}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-7 pr-3 py-2 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-indigo-500"
+                className="w-full bg-gray-50 border border-gray-200 rounded-lg pl-7 pr-3 py-2 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:border-violet-400"
               />
             </div>
 
             <button
               onClick={handleSave}
               disabled={!form.title.trim() || !form.categoryId || form.steps.length === 0}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white font-medium py-2 rounded-lg border-0 cursor-pointer transition-colors"
+              className="w-full bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white font-medium py-2 rounded-lg border-0 cursor-pointer transition-colors"
             >
               {editingId ? 'Save Changes' : 'Add Routine'}
             </button>
@@ -299,7 +299,7 @@ function RoutineCard({
   const completedToday = routine.completedDates.includes(today())
 
   return (
-    <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
       <div className="p-4">
         <div className="flex items-start justify-between mb-2">
           <div className="flex items-start gap-2">
@@ -307,19 +307,19 @@ function RoutineCard({
               <button
                 onClick={() => onReorder(index, index - 1)}
                 disabled={index === 0}
-                className="text-gray-600 hover:text-gray-400 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
+                className="text-gray-300 hover:text-gray-600 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
                 title="Move up"
               >▲</button>
               <button
                 onClick={() => onReorder(index, index + 1)}
                 disabled={index === total - 1}
-                className="text-gray-600 hover:text-gray-400 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
+                className="text-gray-300 hover:text-gray-600 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
                 title="Move down"
               >▼</button>
             </div>
             <div>
-              <div className="font-medium text-white text-sm">{routine.title}</div>
-              {routine.description && <div className="text-xs text-gray-500 mt-0.5">{routine.description}</div>}
+              <div className="font-medium text-gray-900 text-sm">{routine.title}</div>
+              {routine.description && <div className="text-xs text-gray-400 mt-0.5">{routine.description}</div>}
               <div className="flex items-center gap-2 mt-1 flex-wrap">
                 {cat && <span className="text-xs" style={{ color: cat.color }}>{cat.icon} {cat.name}</span>}
                 <span className="text-xs text-gray-500 capitalize">
@@ -337,15 +337,15 @@ function RoutineCard({
           <div className="flex items-center gap-1">
             <button
               onClick={() => onEdit(routine)}
-              className="text-gray-600 hover:text-indigo-400 bg-transparent border-0 cursor-pointer text-sm"
+              className="text-gray-400 hover:text-violet-500 bg-transparent border-0 cursor-pointer text-sm"
               title="Edit"
             >✎</button>
-            <button onClick={() => onDelete(routine.id)} className="text-gray-700 hover:text-red-400 bg-transparent border-0 cursor-pointer text-lg">×</button>
+            <button onClick={() => onDelete(routine.id)} className="text-gray-300 hover:text-red-400 bg-transparent border-0 cursor-pointer text-lg">×</button>
           </div>
         </div>
 
-        <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden mb-3">
-          <div className="h-full bg-indigo-500 rounded-full transition-all" style={{ width: `${progress}%` }} />
+        <div className="h-1.5 bg-violet-100 rounded-full overflow-hidden mb-3">
+          <div className="h-full bg-violet-500 rounded-full transition-all" style={{ width: `${progress}%` }} />
         </div>
 
         <div className="space-y-1.5">
@@ -355,24 +355,24 @@ function RoutineCard({
                 <button
                   onClick={() => onReorderStep(routine.id, stepIndex, stepIndex - 1)}
                   disabled={stepIndex === 0}
-                  className="text-gray-600 hover:text-gray-400 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
+                  className="text-gray-300 hover:text-gray-600 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
                   title="Move up"
                 >▲</button>
                 <button
                   onClick={() => onReorderStep(routine.id, stepIndex, stepIndex + 1)}
                   disabled={stepIndex === routine.steps.length - 1}
-                  className="text-gray-600 hover:text-gray-400 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
+                  className="text-gray-300 hover:text-gray-600 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
                   title="Move down"
                 >▼</button>
               </div>
               <button
                 onClick={() => !completedToday && onToggleStep(routine.id, step.id)}
-                className={`flex-1 flex items-center gap-2.5 text-left bg-transparent border-0 cursor-pointer p-1.5 rounded-lg hover:bg-gray-800 transition-colors ${completedToday ? 'cursor-default' : ''}`}
+                className={`flex-1 flex items-center gap-2.5 text-left bg-transparent border-0 cursor-pointer p-1.5 rounded-lg hover:bg-violet-50 transition-colors ${completedToday ? 'cursor-default' : ''}`}
               >
-                <div className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ${step.completed ? 'bg-indigo-500 border-indigo-500' : 'border-gray-600'}`}>
+                <div className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ${step.completed ? 'bg-violet-500 border-violet-500' : 'border-gray-300'}`}>
                   {step.completed && <span className="text-white text-xs">✓</span>}
                 </div>
-                <span className={`text-sm ${step.completed ? 'line-through text-gray-500' : 'text-gray-300'}`}>{step.title}</span>
+                <span className={`text-sm ${step.completed ? 'line-through text-gray-400' : 'text-gray-700'}`}>{step.title}</span>
               </button>
             </div>
           ))}
@@ -384,19 +384,19 @@ function RoutineCard({
           {allDone ? (
             <button
               onClick={() => onComplete(routine.id, today())}
-              className="flex-1 bg-green-600 hover:bg-green-500 text-white text-sm font-medium py-2 rounded-lg border-0 cursor-pointer transition-colors"
+              className="flex-1 bg-green-500 hover:bg-green-400 text-white text-sm font-medium py-2 rounded-lg border-0 cursor-pointer transition-colors"
             >
               Complete Routine ✓
             </button>
           ) : (
-            <div className="flex-1 text-center text-xs text-gray-600 py-2">
+            <div className="flex-1 text-center text-xs text-gray-400 py-2">
               Complete all steps to finish
             </div>
           )}
           {completedCount > 0 && (
             <button
               onClick={() => onReset(routine.id)}
-              className="text-gray-600 hover:text-gray-400 text-xs bg-transparent border-0 cursor-pointer px-2"
+              className="text-gray-400 hover:text-gray-600 text-xs bg-transparent border-0 cursor-pointer px-2"
             >
               Reset
             </button>
@@ -405,7 +405,7 @@ function RoutineCard({
       )}
       {completedToday && (
         <div className="px-4 pb-4">
-          <div className="text-center text-green-400 text-sm bg-green-500/10 rounded-lg py-2">
+          <div className="text-center text-green-600 text-sm bg-green-50 rounded-lg py-2">
             ✓ Completed today
           </div>
         </div>
