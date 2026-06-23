@@ -2,6 +2,12 @@ import { create } from 'zustand'
 import { v4 as uuid } from 'uuid'
 import { supabase } from './lib/supabase'
 
+function dbErr(op: string) {
+  return (res: { error: { message: string } | null }) => {
+    if (res.error) console.error(`[DB] ${op}:`, res.error.message)
+  }
+}
+
 export type Priority = 'low' | 'medium' | 'high'
 export type Frequency = 'daily' | 'weekly' | 'monthly'
 
@@ -188,9 +194,8 @@ function rowToReward(r: Record<string, unknown>): CustomReward {
 const DEFAULT_CATEGORIES: Category[] = [
   { id: uuid(), name: 'Work', color: '#6366f1', icon: '💼' },
   { id: uuid(), name: 'Home', color: '#10b981', icon: '🏠' },
-  { id: uuid(), name: 'Health', color: '#f59e0b', icon: '💪' },
   { id: uuid(), name: 'Crafts', color: '#ec4899', icon: '🎨' },
-  { id: uuid(), name: 'Personal', color: '#8b5cf6', icon: '⭐' },
+  { id: uuid(), name: 'Personal', color: '#09689c', icon: '⭐' },
 ]
 
 export const useStore = create<AppState>()((set, get) => ({
@@ -265,8 +270,8 @@ export const useStore = create<AppState>()((set, get) => ({
     const newPoints = get().totalPoints + bonusPoints
     const dateStr = new Date().toISOString().slice(0, 10)
     set({ dailyBonusClaimed: true, totalPoints: newPoints })
-    supabase.from('app_config').upsert({ key: `daily_bonus_claimed_${dateStr}`, value: true })
-    supabase.from('app_config').upsert({ key: 'total_points', value: newPoints })
+    supabase.from('app_config').upsert({ key: `daily_bonus_claimed_${dateStr}`, value: true }).then(dbErr('claimDailyBonus:bonus'))
+    supabase.from('app_config').upsert({ key: 'total_points', value: newPoints }).then(dbErr('claimDailyBonus:points'))
   },
 
   addToToday: (type, id) => {
@@ -275,7 +280,7 @@ export const useStore = create<AppState>()((set, get) => ({
       if (s.todayAssignments.includes(key)) return s
       const updated = [...s.todayAssignments, key]
       const todayKey = `today_assignments_${new Date().toISOString().slice(0, 10)}`
-      supabase.from('app_config').upsert({ key: todayKey, value: updated })
+      supabase.from('app_config').upsert({ key: todayKey, value: updated }).then(dbErr('addToToday'))
       return { todayAssignments: updated }
     })
   },
@@ -286,8 +291,8 @@ export const useStore = create<AppState>()((set, get) => ({
       const updatedAssignments = s.todayAssignments.filter((k) => k !== key)
       const updatedOrder = s.todayOrder.filter((k) => k !== key)
       const dateStr = new Date().toISOString().slice(0, 10)
-      supabase.from('app_config').upsert({ key: `today_assignments_${dateStr}`, value: updatedAssignments })
-      supabase.from('app_config').upsert({ key: `today_order_${dateStr}`, value: updatedOrder })
+      supabase.from('app_config').upsert({ key: `today_assignments_${dateStr}`, value: updatedAssignments }).then(dbErr('removeFromToday:assignments'))
+      supabase.from('app_config').upsert({ key: `today_order_${dateStr}`, value: updatedOrder }).then(dbErr('removeFromToday:order'))
       return { todayAssignments: updatedAssignments, todayOrder: updatedOrder }
     })
   },
@@ -295,7 +300,7 @@ export const useStore = create<AppState>()((set, get) => ({
   setTodayOrder: (order) => {
     set({ todayOrder: order })
     const dateStr = new Date().toISOString().slice(0, 10)
-    supabase.from('app_config').upsert({ key: `today_order_${dateStr}`, value: order })
+    supabase.from('app_config').upsert({ key: `today_order_${dateStr}`, value: order }).then(dbErr('setTodayOrder'))
   },
 
   // ── Categories ───────────────────────────────────────────────────────────────
@@ -303,17 +308,17 @@ export const useStore = create<AppState>()((set, get) => ({
   addCategory: (cat) => {
     const newCat = { ...cat, id: uuid() }
     set((s) => ({ categories: [...s.categories, newCat] }))
-    supabase.from('categories').insert({ id: newCat.id, name: newCat.name, color: newCat.color, icon: newCat.icon })
+    supabase.from('categories').insert({ id: newCat.id, name: newCat.name, color: newCat.color, icon: newCat.icon }).then(dbErr('addCategory'))
   },
 
   updateCategory: (id, updates) => {
     set((s) => ({ categories: s.categories.map((c) => (c.id === id ? { ...c, ...updates } : c)) }))
-    supabase.from('categories').update(updates).eq('id', id)
+    supabase.from('categories').update(updates).eq('id', id).then(dbErr('updateCategory'))
   },
 
   deleteCategory: (id) => {
     set((s) => ({ categories: s.categories.filter((c) => c.id !== id) }))
-    supabase.from('categories').delete().eq('id', id)
+    supabase.from('categories').delete().eq('id', id).then(dbErr('deleteCategory'))
   },
 
   // ── Tasks ─────────────────────────────────────────────────────────────────────
@@ -326,7 +331,7 @@ export const useStore = create<AppState>()((set, get) => ({
       category_id: newTask.categoryId, priority: newTask.priority, due_date: newTask.dueDate,
       time_estimate: newTask.timeEstimate, completed: false,
       created_at: newTask.createdAt, points: newTask.points,
-    })
+    }).then(dbErr('addTask'))
   },
 
   updateTask: (id, updates) => {
@@ -341,7 +346,7 @@ export const useStore = create<AppState>()((set, get) => ({
     if (updates.completed !== undefined) dbUpdates.completed = updates.completed
     if (updates.completedAt !== undefined) dbUpdates.completed_at = updates.completedAt
     if (updates.points !== undefined) dbUpdates.points = updates.points
-    supabase.from('tasks').update(dbUpdates).eq('id', id)
+    supabase.from('tasks').update(dbUpdates).eq('id', id).then(dbErr('updateTask'))
   },
 
   completeTask: (id) => {
@@ -353,20 +358,20 @@ export const useStore = create<AppState>()((set, get) => ({
       tasks: s.tasks.map((t) => (t.id === id ? { ...t, completed: true, completedAt } : t)),
       totalPoints: newPoints,
     }))
-    supabase.from('tasks').update({ completed: true, completed_at: completedAt }).eq('id', id)
-    supabase.from('app_config').upsert({ key: 'total_points', value: newPoints })
+    supabase.from('tasks').update({ completed: true, completed_at: completedAt }).eq('id', id).then(dbErr('completeTask'))
+    supabase.from('app_config').upsert({ key: 'total_points', value: newPoints }).then(dbErr('completeTask:points'))
   },
 
   uncompleteTask: (id) => {
     set((s) => ({
       tasks: s.tasks.map((t) => (t.id === id ? { ...t, completed: false, completedAt: undefined } : t)),
     }))
-    supabase.from('tasks').update({ completed: false, completed_at: null }).eq('id', id)
+    supabase.from('tasks').update({ completed: false, completed_at: null }).eq('id', id).then(dbErr('uncompleteTask'))
   },
 
   deleteTask: (id) => {
     set((s) => ({ tasks: s.tasks.filter((t) => t.id !== id) }))
-    supabase.from('tasks').delete().eq('id', id)
+    supabase.from('tasks').delete().eq('id', id).then(dbErr('deleteTask'))
   },
 
   reorderTasks: (fromIndex, toIndex) => {
@@ -374,7 +379,7 @@ export const useStore = create<AppState>()((set, get) => ({
       const tasks = [...s.tasks]
       const [item] = tasks.splice(fromIndex, 1)
       tasks.splice(toIndex, 0, item)
-      supabase.from('app_config').upsert({ key: 'tasks_order', value: tasks.map((t) => t.id) })
+      supabase.from('app_config').upsert({ key: 'tasks_order', value: tasks.map((t) => t.id) }).then(dbErr('reorderTasks'))
       return { tasks }
     })
   },
@@ -393,7 +398,7 @@ export const useStore = create<AppState>()((set, get) => ({
       target_days: newHabit.targetDays, streak: 0, longest_streak: 0,
       completed_dates: [], created_at: newHabit.createdAt,
       points: newHabit.points, color: newHabit.color,
-    })
+    }).then(dbErr('addHabit'))
   },
 
   updateHabit: (id, updates) => {
@@ -406,7 +411,7 @@ export const useStore = create<AppState>()((set, get) => ({
     if (updates.targetDays !== undefined) dbUpdates.target_days = updates.targetDays
     if (updates.color !== undefined) dbUpdates.color = updates.color
     if (updates.points !== undefined) dbUpdates.points = updates.points
-    supabase.from('habits').update(dbUpdates).eq('id', id)
+    supabase.from('habits').update(dbUpdates).eq('id', id).then(dbErr('updateHabit'))
   },
 
   completeHabit: (id, date) => {
@@ -420,8 +425,8 @@ export const useStore = create<AppState>()((set, get) => ({
       habits: s.habits.map((h) => (h.id === id ? { ...h, completedDates: dates, streak, longestStreak } : h)),
       totalPoints: newPoints,
     }))
-    supabase.from('habits').update({ completed_dates: dates, streak, longest_streak: longestStreak }).eq('id', id)
-    supabase.from('app_config').upsert({ key: 'total_points', value: newPoints })
+    supabase.from('habits').update({ completed_dates: dates, streak, longest_streak: longestStreak }).eq('id', id).then(dbErr('completeHabit'))
+    supabase.from('app_config').upsert({ key: 'total_points', value: newPoints }).then(dbErr('completeHabit:points'))
   },
 
   uncompleteHabit: (id, date) => {
@@ -432,12 +437,12 @@ export const useStore = create<AppState>()((set, get) => ({
     set((s) => ({
       habits: s.habits.map((h) => (h.id === id ? { ...h, completedDates: dates, streak } : h)),
     }))
-    supabase.from('habits').update({ completed_dates: dates, streak }).eq('id', id)
+    supabase.from('habits').update({ completed_dates: dates, streak }).eq('id', id).then(dbErr('uncompleteHabit'))
   },
 
   deleteHabit: (id) => {
     set((s) => ({ habits: s.habits.filter((h) => h.id !== id) }))
-    supabase.from('habits').delete().eq('id', id)
+    supabase.from('habits').delete().eq('id', id).then(dbErr('deleteHabit'))
   },
 
   reorderHabits: (fromIndex, toIndex) => {
@@ -445,7 +450,7 @@ export const useStore = create<AppState>()((set, get) => ({
       const habits = [...s.habits]
       const [item] = habits.splice(fromIndex, 1)
       habits.splice(toIndex, 0, item)
-      supabase.from('app_config').upsert({ key: 'habits_order', value: habits.map((h) => h.id) })
+      supabase.from('app_config').upsert({ key: 'habits_order', value: habits.map((h) => h.id) }).then(dbErr('reorderHabits'))
       return { habits }
     })
   },
@@ -460,7 +465,7 @@ export const useStore = create<AppState>()((set, get) => ({
       category_id: newRoutine.categoryId, steps: newRoutine.steps,
       frequency: newRoutine.frequency, target_days: newRoutine.targetDays ?? null,
       completed_dates: [], created_at: newRoutine.createdAt, points: newRoutine.points,
-    })
+    }).then(dbErr('addRoutine'))
   },
 
   updateRoutine: (id, updates) => {
@@ -473,7 +478,7 @@ export const useStore = create<AppState>()((set, get) => ({
     if (updates.frequency !== undefined) dbUpdates.frequency = updates.frequency
     if (updates.targetDays !== undefined) dbUpdates.target_days = updates.targetDays.length > 0 ? updates.targetDays : null
     if (updates.points !== undefined) dbUpdates.points = updates.points
-    supabase.from('routines').update(dbUpdates).eq('id', id)
+    supabase.from('routines').update(dbUpdates).eq('id', id).then(dbErr('updateRoutine'))
   },
 
   toggleRoutineStep: (routineId, stepId) => {
@@ -485,7 +490,7 @@ export const useStore = create<AppState>()((set, get) => ({
       ),
     }))
     const routine = get().routines.find((r) => r.id === routineId)
-    if (routine) supabase.from('routines').update({ steps: routine.steps }).eq('id', routineId)
+    if (routine) supabase.from('routines').update({ steps: routine.steps }).eq('id', routineId).then(dbErr('toggleRoutineStep'))
   },
 
   completeRoutine: (id, date) => {
@@ -500,8 +505,8 @@ export const useStore = create<AppState>()((set, get) => ({
       ),
       totalPoints: newPoints,
     }))
-    supabase.from('routines').update({ completed_dates: completedDates, last_completed_date: date, steps: resetSteps }).eq('id', id)
-    supabase.from('app_config').upsert({ key: 'total_points', value: newPoints })
+    supabase.from('routines').update({ completed_dates: completedDates, last_completed_date: date, steps: resetSteps }).eq('id', id).then(dbErr('completeRoutine'))
+    supabase.from('app_config').upsert({ key: 'total_points', value: newPoints }).then(dbErr('completeRoutine:points'))
   },
 
   resetRoutine: (id) => {
@@ -511,12 +516,12 @@ export const useStore = create<AppState>()((set, get) => ({
     set((s) => ({
       routines: s.routines.map((r) => (r.id === id ? { ...r, steps: resetSteps } : r)),
     }))
-    supabase.from('routines').update({ steps: resetSteps }).eq('id', id)
+    supabase.from('routines').update({ steps: resetSteps }).eq('id', id).then(dbErr('resetRoutine'))
   },
 
   deleteRoutine: (id) => {
     set((s) => ({ routines: s.routines.filter((r) => r.id !== id) }))
-    supabase.from('routines').delete().eq('id', id)
+    supabase.from('routines').delete().eq('id', id).then(dbErr('deleteRoutine'))
   },
 
   reorderRoutines: (fromIndex, toIndex) => {
@@ -524,7 +529,7 @@ export const useStore = create<AppState>()((set, get) => ({
       const routines = [...s.routines]
       const [item] = routines.splice(fromIndex, 1)
       routines.splice(toIndex, 0, item)
-      supabase.from('app_config').upsert({ key: 'routines_order', value: routines.map((r) => r.id) })
+      supabase.from('app_config').upsert({ key: 'routines_order', value: routines.map((r) => r.id) }).then(dbErr('reorderRoutines'))
       return { routines }
     })
   },
@@ -537,7 +542,7 @@ export const useStore = create<AppState>()((set, get) => ({
     supabase.from('custom_rewards').insert({
       id: newReward.id, title: newReward.title, description: newReward.description,
       cost: newReward.cost, emoji: newReward.emoji, redeemed_count: 0,
-    })
+    }).then(dbErr('addCustomReward'))
   },
 
   updateCustomReward: (id, updates) => {
@@ -547,12 +552,12 @@ export const useStore = create<AppState>()((set, get) => ({
     if (updates.description !== undefined) dbUpdates.description = updates.description
     if (updates.cost !== undefined) dbUpdates.cost = updates.cost
     if (updates.emoji !== undefined) dbUpdates.emoji = updates.emoji
-    supabase.from('custom_rewards').update(dbUpdates).eq('id', id)
+    supabase.from('custom_rewards').update(dbUpdates).eq('id', id).then(dbErr('updateCustomReward'))
   },
 
   deleteCustomReward: (id) => {
     set((s) => ({ customRewards: s.customRewards.filter((r) => r.id !== id) }))
-    supabase.from('custom_rewards').delete().eq('id', id)
+    supabase.from('custom_rewards').delete().eq('id', id).then(dbErr('deleteCustomReward'))
   },
 
   redeemReward: (id) => {
@@ -564,8 +569,8 @@ export const useStore = create<AppState>()((set, get) => ({
       totalPoints: newPoints,
       customRewards: s.customRewards.map((r) => (r.id === id ? { ...r, redeemedCount: newCount } : r)),
     }))
-    supabase.from('custom_rewards').update({ redeemed_count: newCount }).eq('id', id)
-    supabase.from('app_config').upsert({ key: 'total_points', value: newPoints })
+    supabase.from('custom_rewards').update({ redeemed_count: newCount }).eq('id', id).then(dbErr('redeemReward'))
+    supabase.from('app_config').upsert({ key: 'total_points', value: newPoints }).then(dbErr('redeemReward:points'))
   },
 }))
 
