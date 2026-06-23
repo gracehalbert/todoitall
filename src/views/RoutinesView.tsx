@@ -3,17 +3,47 @@ import { useStore, Routine, Frequency } from '../store'
 import Modal from '../components/Modal'
 import { v4 as uuid } from 'uuid'
 
+const WEEK_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const MONTH_DAYS = Array.from({ length: 31 }, (_, i) => i + 1)
+
 function today() {
   return new Date().toISOString().slice(0, 10)
 }
 
+const EMPTY_FORM = {
+  title: '', description: '', categoryId: '', frequency: 'daily' as Frequency,
+  targetDays: [] as number[],
+  steps: [] as { id: string; title: string; completed: boolean }[], dollars: '5',
+}
+
 export default function RoutinesView() {
-  const { routines, categories, addRoutine, completeRoutine, resetRoutine, toggleRoutineStep, deleteRoutine } = useStore()
+  const { routines, categories, addRoutine, updateRoutine, completeRoutine, resetRoutine, toggleRoutineStep, deleteRoutine, reorderRoutines } = useStore()
   const [showModal, setShowModal] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [stepInput, setStepInput] = useState('')
-  const [form, setForm] = useState({
-    title: '', description: '', categoryId: '', frequency: 'daily' as Frequency, steps: [] as { id: string; title: string; completed: boolean }[], dollars: '5',
-  })
+  const [form, setForm] = useState(EMPTY_FORM)
+
+  const openAdd = () => {
+    setEditingId(null)
+    setForm(EMPTY_FORM)
+    setStepInput('')
+    setShowModal(true)
+  }
+
+  const openEdit = (routine: Routine) => {
+    setEditingId(routine.id)
+    setForm({
+      title: routine.title,
+      description: routine.description ?? '',
+      categoryId: routine.categoryId,
+      frequency: routine.frequency,
+      targetDays: routine.targetDays ?? [],
+      steps: routine.steps.map((s) => ({ ...s })),
+      dollars: routine.points.toFixed(2),
+    })
+    setStepInput('')
+    setShowModal(true)
+  }
 
   const addStep = () => {
     if (!stepInput.trim()) return
@@ -23,19 +53,24 @@ export default function RoutinesView() {
 
   const removeStep = (id: string) => setForm({ ...form, steps: form.steps.filter((s) => s.id !== id) })
 
-  const handleAdd = () => {
+  const handleSave = () => {
     if (!form.title.trim() || !form.categoryId || form.steps.length === 0) return
     const dollars = parseFloat(form.dollars)
     if (isNaN(dollars) || dollars < 0) return
-    addRoutine({
+    const data = {
       title: form.title.trim(),
       description: form.description.trim() || undefined,
       categoryId: form.categoryId,
       frequency: form.frequency,
+      targetDays: form.frequency !== 'daily' ? form.targetDays : undefined,
       steps: form.steps,
       points: Math.round(dollars * 100) / 100,
-    })
-    setForm({ title: '', description: '', categoryId: '', frequency: 'daily', steps: [], dollars: '5' })
+    }
+    if (editingId) {
+      updateRoutine(editingId, data)
+    } else {
+      addRoutine(data)
+    }
     setShowModal(false)
   }
 
@@ -44,7 +79,7 @@ export default function RoutinesView() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold">Routines</h2>
         <button
-          onClick={() => setShowModal(true)}
+          onClick={openAdd}
           className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium px-3 py-1.5 rounded-lg border-0 cursor-pointer transition-colors"
         >
           + Add
@@ -59,13 +94,32 @@ export default function RoutinesView() {
       )}
 
       <div className="space-y-3">
-        {routines.map((r) => (
-          <RoutineCard key={r.id} routine={r} onComplete={completeRoutine} onReset={resetRoutine} onToggleStep={toggleRoutineStep} onDelete={deleteRoutine} />
+        {routines.map((r, index) => (
+          <RoutineCard
+            key={r.id}
+            routine={r}
+            index={index}
+            total={routines.length}
+            onComplete={completeRoutine}
+            onReset={resetRoutine}
+            onToggleStep={toggleRoutineStep}
+            onDelete={deleteRoutine}
+            onEdit={openEdit}
+            onReorder={reorderRoutines}
+            onReorderStep={(routineId, from, to) => {
+              const routine = routines.find((r) => r.id === routineId)
+              if (!routine) return
+              const steps = [...routine.steps]
+              const [item] = steps.splice(from, 1)
+              steps.splice(to, 0, item)
+              updateRoutine(routineId, { steps })
+            }}
+          />
         ))}
       </div>
 
       {showModal && (
-        <Modal title="New Routine" onClose={() => setShowModal(false)}>
+        <Modal title={editingId ? 'Edit Routine' : 'New Routine'} onClose={() => setShowModal(false)}>
           <div className="space-y-3">
             <input
               placeholder="Routine name (e.g. Morning routine)"
@@ -91,7 +145,7 @@ export default function RoutinesView() {
             </select>
             <select
               value={form.frequency}
-              onChange={(e) => setForm({ ...form, frequency: e.target.value as Frequency })}
+              onChange={(e) => setForm({ ...form, frequency: e.target.value as Frequency, targetDays: [] })}
               className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-indigo-500"
             >
               <option value="daily">Daily</option>
@@ -99,11 +153,83 @@ export default function RoutinesView() {
               <option value="monthly">Monthly</option>
             </select>
 
+            {form.frequency === 'weekly' && (
+              <div>
+                <label className="text-xs text-gray-400 mb-1.5 block">Target days <span className="text-gray-600">(auto-appears on these days)</span></label>
+                <div className="flex gap-1 flex-wrap">
+                  {WEEK_DAYS.map((d, i) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setForm({
+                        ...form,
+                        targetDays: form.targetDays.includes(i)
+                          ? form.targetDays.filter((x) => x !== i)
+                          : [...form.targetDays, i],
+                      })}
+                      className={`text-xs px-2 py-1 rounded border-0 cursor-pointer transition-colors ${
+                        form.targetDays.includes(i) ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400'
+                      }`}
+                    >
+                      {d}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {form.frequency === 'monthly' && (
+              <div>
+                <label className="text-xs text-gray-400 mb-1.5 block">Target days of month <span className="text-gray-600">(auto-appears on these dates)</span></label>
+                <div className="flex gap-1 flex-wrap">
+                  {MONTH_DAYS.map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setForm({
+                        ...form,
+                        targetDays: form.targetDays.includes(d)
+                          ? form.targetDays.filter((x) => x !== d)
+                          : [...form.targetDays, d],
+                      })}
+                      className={`text-xs w-7 h-7 rounded border-0 cursor-pointer transition-colors ${
+                        form.targetDays.includes(d) ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400'
+                      }`}
+                    >
+                      {d}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Steps</label>
               <div className="space-y-1 mb-2">
-                {form.steps.map((step) => (
-                  <div key={step.id} className="flex items-center gap-2 bg-gray-800 rounded-lg px-3 py-1.5">
+                {form.steps.map((step, i) => (
+                  <div key={step.id} className="flex items-center gap-2 bg-gray-800 rounded-lg px-2 py-1.5">
+                    <div className="flex flex-col gap-0.5">
+                      <button
+                        onClick={() => {
+                          const steps = [...form.steps]
+                          const [item] = steps.splice(i, 1)
+                          steps.splice(i - 1, 0, item)
+                          setForm({ ...form, steps })
+                        }}
+                        disabled={i === 0}
+                        className="text-gray-600 hover:text-gray-400 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
+                      >▲</button>
+                      <button
+                        onClick={() => {
+                          const steps = [...form.steps]
+                          const [item] = steps.splice(i, 1)
+                          steps.splice(i + 1, 0, item)
+                          setForm({ ...form, steps })
+                        }}
+                        disabled={i === form.steps.length - 1}
+                        className="text-gray-600 hover:text-gray-400 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
+                      >▼</button>
+                    </div>
                     <span className="text-xs text-gray-300 flex-1">{step.title}</span>
                     <button onClick={() => removeStep(step.id)} className="text-gray-600 hover:text-red-400 bg-transparent border-0 cursor-pointer">×</button>
                   </div>
@@ -140,11 +266,11 @@ export default function RoutinesView() {
             </div>
 
             <button
-              onClick={handleAdd}
+              onClick={handleSave}
               disabled={!form.title.trim() || !form.categoryId || form.steps.length === 0}
               className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white font-medium py-2 rounded-lg border-0 cursor-pointer transition-colors"
             >
-              Add Routine
+              {editingId ? 'Save Changes' : 'Add Routine'}
             </button>
           </div>
         </Modal>
@@ -154,13 +280,16 @@ export default function RoutinesView() {
 }
 
 function RoutineCard({
-  routine, onComplete, onReset, onToggleStep, onDelete,
+  routine, index, total, onComplete, onReset, onToggleStep, onDelete, onEdit, onReorder, onReorderStep,
 }: {
-  routine: Routine
+  routine: Routine; index: number; total: number
   onComplete: (id: string, date: string) => void
   onReset: (id: string) => void
   onToggleStep: (routineId: string, stepId: string) => void
   onDelete: (id: string) => void
+  onEdit: (routine: Routine) => void
+  onReorder: (from: number, to: number) => void
+  onReorderStep: (routineId: string, from: number, to: number) => void
 }) {
   const { categories } = useStore()
   const cat = categories.find((c) => c.id === routine.categoryId)
@@ -173,37 +302,79 @@ function RoutineCard({
     <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
       <div className="p-4">
         <div className="flex items-start justify-between mb-2">
-          <div>
-            <div className="font-medium text-white text-sm">{routine.title}</div>
-            {routine.description && <div className="text-xs text-gray-500 mt-0.5">{routine.description}</div>}
-            <div className="flex items-center gap-2 mt-1">
-              {cat && <span className="text-xs" style={{ color: cat.color }}>{cat.icon} {cat.name}</span>}
-              <span className="text-xs text-gray-500 capitalize">{routine.frequency}</span>
-              <span className="text-xs text-green-400">+${routine.points.toFixed(2)}</span>
-              <span className="text-xs text-gray-500">{completedCount}/{routine.steps.length}</span>
+          <div className="flex items-start gap-2">
+            <div className="flex flex-col gap-0.5 mt-0.5">
+              <button
+                onClick={() => onReorder(index, index - 1)}
+                disabled={index === 0}
+                className="text-gray-600 hover:text-gray-400 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
+                title="Move up"
+              >▲</button>
+              <button
+                onClick={() => onReorder(index, index + 1)}
+                disabled={index === total - 1}
+                className="text-gray-600 hover:text-gray-400 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
+                title="Move down"
+              >▼</button>
+            </div>
+            <div>
+              <div className="font-medium text-white text-sm">{routine.title}</div>
+              {routine.description && <div className="text-xs text-gray-500 mt-0.5">{routine.description}</div>}
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                {cat && <span className="text-xs" style={{ color: cat.color }}>{cat.icon} {cat.name}</span>}
+                <span className="text-xs text-gray-500 capitalize">
+                  {routine.frequency === 'weekly' && routine.targetDays && routine.targetDays.length > 0
+                    ? routine.targetDays.map((d) => WEEK_DAYS[d]).join(', ')
+                    : routine.frequency === 'monthly' && routine.targetDays && routine.targetDays.length > 0
+                    ? routine.targetDays.sort((a, b) => a - b).map((d) => `${d}`).join(', ')
+                    : routine.frequency}
+                </span>
+                <span className="text-xs text-green-400">+${routine.points.toFixed(2)}</span>
+                <span className="text-xs text-gray-500">{completedCount}/{routine.steps.length}</span>
+              </div>
             </div>
           </div>
-          <button onClick={() => onDelete(routine.id)} className="text-gray-700 hover:text-red-400 bg-transparent border-0 cursor-pointer text-lg">×</button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => onEdit(routine)}
+              className="text-gray-600 hover:text-indigo-400 bg-transparent border-0 cursor-pointer text-sm"
+              title="Edit"
+            >✎</button>
+            <button onClick={() => onDelete(routine.id)} className="text-gray-700 hover:text-red-400 bg-transparent border-0 cursor-pointer text-lg">×</button>
+          </div>
         </div>
 
-        {/* Progress bar */}
         <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden mb-3">
           <div className="h-full bg-indigo-500 rounded-full transition-all" style={{ width: `${progress}%` }} />
         </div>
 
-        {/* Steps */}
         <div className="space-y-1.5">
-          {routine.steps.map((step) => (
-            <button
-              key={step.id}
-              onClick={() => !completedToday && onToggleStep(routine.id, step.id)}
-              className={`w-full flex items-center gap-2.5 text-left bg-transparent border-0 cursor-pointer p-1.5 rounded-lg hover:bg-gray-800 transition-colors ${completedToday ? 'cursor-default' : ''}`}
-            >
-              <div className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ${step.completed ? 'bg-indigo-500 border-indigo-500' : 'border-gray-600'}`}>
-                {step.completed && <span className="text-white text-xs">✓</span>}
+          {routine.steps.map((step, stepIndex) => (
+            <div key={step.id} className="flex items-center gap-1">
+              <div className="flex flex-col gap-0.5 flex-shrink-0">
+                <button
+                  onClick={() => onReorderStep(routine.id, stepIndex, stepIndex - 1)}
+                  disabled={stepIndex === 0}
+                  className="text-gray-600 hover:text-gray-400 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
+                  title="Move up"
+                >▲</button>
+                <button
+                  onClick={() => onReorderStep(routine.id, stepIndex, stepIndex + 1)}
+                  disabled={stepIndex === routine.steps.length - 1}
+                  className="text-gray-600 hover:text-gray-400 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
+                  title="Move down"
+                >▼</button>
               </div>
-              <span className={`text-sm ${step.completed ? 'line-through text-gray-500' : 'text-gray-300'}`}>{step.title}</span>
-            </button>
+              <button
+                onClick={() => !completedToday && onToggleStep(routine.id, step.id)}
+                className={`flex-1 flex items-center gap-2.5 text-left bg-transparent border-0 cursor-pointer p-1.5 rounded-lg hover:bg-gray-800 transition-colors ${completedToday ? 'cursor-default' : ''}`}
+              >
+                <div className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ${step.completed ? 'bg-indigo-500 border-indigo-500' : 'border-gray-600'}`}>
+                  {step.completed && <span className="text-white text-xs">✓</span>}
+                </div>
+                <span className={`text-sm ${step.completed ? 'line-through text-gray-500' : 'text-gray-300'}`}>{step.title}</span>
+              </button>
+            </div>
           ))}
         </div>
       </div>

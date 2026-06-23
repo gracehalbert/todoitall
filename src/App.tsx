@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import TodayView from './views/TodayView'
 import TasksView from './views/TasksView'
 import HabitsView from './views/HabitsView'
 import RoutinesView from './views/RoutinesView'
@@ -6,9 +7,10 @@ import RewardsView from './views/RewardsView'
 import SettingsView from './views/SettingsView'
 import { useStore } from './store'
 
-type Tab = 'tasks' | 'habits' | 'routines' | 'rewards' | 'settings'
+type Tab = 'today' | 'tasks' | 'habits' | 'routines' | 'rewards' | 'settings'
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
+  { id: 'today', label: 'Today', icon: '☀️' },
   { id: 'tasks', label: 'Tasks', icon: '✓' },
   { id: 'habits', label: 'Habits', icon: '🔄' },
   { id: 'routines', label: 'Routines', icon: '📋' },
@@ -17,7 +19,7 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
 ]
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>('tasks')
+  const [tab, setTab] = useState<Tab>('today')
   const { totalPoints, loaded, loadFromDB } = useStore()
 
   useEffect(() => { loadFromDB() }, [])
@@ -43,6 +45,7 @@ export default function App() {
       </header>
 
       <main className="flex-1 overflow-y-auto max-w-2xl mx-auto w-full px-4 py-4">
+        {tab === 'today' && <TodayView />}
         {tab === 'tasks' && <TasksView />}
         {tab === 'habits' && <HabitsView />}
         {tab === 'routines' && <RoutinesView />}

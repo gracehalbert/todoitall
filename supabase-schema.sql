@@ -43,11 +43,15 @@ create table if not exists routines (
   category_id uuid,
   steps jsonb not null default '[]',
   frequency text not null,
+  target_days integer[],
   last_completed_date text,
   completed_dates text[] not null default '{}',
   created_at text not null,
   points integer not null default 0
 );
+
+-- Migration: add target_days to existing routines table
+-- alter table routines add column if not exists target_days integer[];
 
 create table if not exists custom_rewards (
   id uuid primary key,

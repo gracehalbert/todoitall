@@ -54,6 +54,7 @@ export interface Routine {
   categoryId: string
   steps: RoutineStep[]
   frequency: Frequency
+  targetDays?: number[]
   lastCompletedDate?: string
   completedDates: string[]
   createdAt: string
@@ -77,8 +78,13 @@ export interface AppState {
   customRewards: CustomReward[]
   totalPoints: number
   loaded: boolean
+  todayAssignments: string[] // format: 'task:id' | 'habit:id' | 'routine:id'
+  todayOrder: string[]
 
   loadFromDB: () => Promise<void>
+  addToToday: (type: 'task' | 'habit' | 'routine', id: string) => void
+  removeFromToday: (type: 'task' | 'habit' | 'routine', id: string) => void
+  setTodayOrder: (order: string[]) => void
 
   addCategory: (cat: Omit<Category, 'id'>) => void
   updateCategory: (id: string, updates: Partial<Category>) => void
@@ -89,12 +95,14 @@ export interface AppState {
   completeTask: (id: string) => void
   uncompleteTask: (id: string) => void
   deleteTask: (id: string) => void
+  reorderTasks: (fromIndex: number, toIndex: number) => void
 
   addHabit: (habit: Omit<Habit, 'id' | 'createdAt' | 'streak' | 'longestStreak' | 'completedDates'>) => void
   updateHabit: (id: string, updates: Partial<Habit>) => void
   completeHabit: (id: string, date: string) => void
   uncompleteHabit: (id: string, date: string) => void
   deleteHabit: (id: string) => void
+  reorderHabits: (fromIndex: number, toIndex: number) => void
 
   addRoutine: (routine: Omit<Routine, 'id' | 'createdAt' | 'completedDates'>) => void
   updateRoutine: (id: string, updates: Partial<Routine>) => void
@@ -102,6 +110,7 @@ export interface AppState {
   completeRoutine: (id: string, date: string) => void
   resetRoutine: (id: string) => void
   deleteRoutine: (id: string) => void
+  reorderRoutines: (fromIndex: number, toIndex: number) => void
 
   addCustomReward: (reward: Omit<CustomReward, 'id' | 'redeemedCount'>) => void
   updateCustomReward: (id: string, updates: Partial<CustomReward>) => void
@@ -154,6 +163,7 @@ function rowToRoutine(r: Record<string, unknown>): Routine {
     categoryId: r.category_id as string,
     steps: r.steps as RoutineStep[],
     frequency: r.frequency as Frequency,
+    targetDays: r.target_days as number[] | undefined,
     lastCompletedDate: r.last_completed_date as string | undefined,
     completedDates: (r.completed_dates as string[]) ?? [],
     createdAt: r.created_at as string,
@@ -188,15 +198,21 @@ export const useStore = create<AppState>()((set, get) => ({
   customRewards: [],
   totalPoints: 0,
   loaded: false,
+  todayAssignments: [],
+  todayOrder: [],
 
   loadFromDB: async () => {
-    const [cats, tasks, habits, routines, rewards, config] = await Promise.all([
+    const todayKey = `today_assignments_${new Date().toISOString().slice(0, 10)}`
+    const [cats, tasks, habits, routines, rewards, config, ordersResult, todayResult, todayOrderResult] = await Promise.all([
       supabase.from('categories').select('*'),
       supabase.from('tasks').select('*'),
       supabase.from('habits').select('*'),
       supabase.from('routines').select('*'),
       supabase.from('custom_rewards').select('*'),
       supabase.from('app_config').select('*').eq('key', 'total_points').maybeSingle(),
+      supabase.from('app_config').select('*').in('key', ['tasks_order', 'habits_order', 'routines_order']),
+      supabase.from('app_config').select('*').eq('key', todayKey).maybeSingle(),
+      supabase.from('app_config').select('*').eq('key', `today_order_${new Date().toISOString().slice(0, 10)}`).maybeSingle(),
     ])
 
     let categories = (cats.data ?? []).map(rowToCategory)
@@ -208,15 +224,62 @@ export const useStore = create<AppState>()((set, get) => ({
       categories = DEFAULT_CATEGORIES
     }
 
+    const orders: Record<string, string[]> = {}
+    for (const row of ordersResult.data ?? []) {
+      orders[row.key as string] = row.value as string[]
+    }
+
+    function applyOrder<T extends { id: string }>(items: T[], orderKey: string): T[] {
+      const order: string[] = orders[orderKey] ?? []
+      if (order.length === 0) return items
+      const map = new Map(items.map((i) => [i.id, i]))
+      const ordered = order.flatMap((id) => (map.has(id) ? [map.get(id)!] : []))
+      const rest = items.filter((i) => !order.includes(i.id))
+      return [...ordered, ...rest]
+    }
+
     set({
       categories,
-      tasks: (tasks.data ?? []).map(rowToTask),
-      habits: (habits.data ?? []).map(rowToHabit),
-      routines: (routines.data ?? []).map(rowToRoutine),
+      tasks: applyOrder((tasks.data ?? []).map(rowToTask), 'tasks_order'),
+      habits: applyOrder((habits.data ?? []).map(rowToHabit), 'habits_order'),
+      routines: applyOrder((routines.data ?? []).map(rowToRoutine), 'routines_order'),
       customRewards: (rewards.data ?? []).map(rowToReward),
       totalPoints: config.data ? (config.data.value as number) : 0,
+      todayAssignments: todayResult.data ? (todayResult.data.value as string[]) : [],
+      todayOrder: todayOrderResult.data ? (todayOrderResult.data.value as string[]) : [],
       loaded: true,
     })
+  },
+
+  // ── Today ─────────────────────────────────────────────────────────────────────
+
+  addToToday: (type, id) => {
+    const key = `${type}:${id}`
+    set((s) => {
+      if (s.todayAssignments.includes(key)) return s
+      const updated = [...s.todayAssignments, key]
+      const todayKey = `today_assignments_${new Date().toISOString().slice(0, 10)}`
+      supabase.from('app_config').upsert({ key: todayKey, value: updated })
+      return { todayAssignments: updated }
+    })
+  },
+
+  removeFromToday: (type, id) => {
+    const key = `${type}:${id}`
+    set((s) => {
+      const updatedAssignments = s.todayAssignments.filter((k) => k !== key)
+      const updatedOrder = s.todayOrder.filter((k) => k !== key)
+      const dateStr = new Date().toISOString().slice(0, 10)
+      supabase.from('app_config').upsert({ key: `today_assignments_${dateStr}`, value: updatedAssignments })
+      supabase.from('app_config').upsert({ key: `today_order_${dateStr}`, value: updatedOrder })
+      return { todayAssignments: updatedAssignments, todayOrder: updatedOrder }
+    })
+  },
+
+  setTodayOrder: (order) => {
+    set({ todayOrder: order })
+    const dateStr = new Date().toISOString().slice(0, 10)
+    supabase.from('app_config').upsert({ key: `today_order_${dateStr}`, value: order })
   },
 
   // ── Categories ───────────────────────────────────────────────────────────────
@@ -290,6 +353,16 @@ export const useStore = create<AppState>()((set, get) => ({
     supabase.from('tasks').delete().eq('id', id)
   },
 
+  reorderTasks: (fromIndex, toIndex) => {
+    set((s) => {
+      const tasks = [...s.tasks]
+      const [item] = tasks.splice(fromIndex, 1)
+      tasks.splice(toIndex, 0, item)
+      supabase.from('app_config').upsert({ key: 'tasks_order', value: tasks.map((t) => t.id) })
+      return { tasks }
+    })
+  },
+
   // ── Habits ────────────────────────────────────────────────────────────────────
 
   addHabit: (habit) => {
@@ -351,6 +424,16 @@ export const useStore = create<AppState>()((set, get) => ({
     supabase.from('habits').delete().eq('id', id)
   },
 
+  reorderHabits: (fromIndex, toIndex) => {
+    set((s) => {
+      const habits = [...s.habits]
+      const [item] = habits.splice(fromIndex, 1)
+      habits.splice(toIndex, 0, item)
+      supabase.from('app_config').upsert({ key: 'habits_order', value: habits.map((h) => h.id) })
+      return { habits }
+    })
+  },
+
   // ── Routines ──────────────────────────────────────────────────────────────────
 
   addRoutine: (routine) => {
@@ -359,8 +442,8 @@ export const useStore = create<AppState>()((set, get) => ({
     supabase.from('routines').insert({
       id: newRoutine.id, title: newRoutine.title, description: newRoutine.description,
       category_id: newRoutine.categoryId, steps: newRoutine.steps,
-      frequency: newRoutine.frequency, completed_dates: [],
-      created_at: newRoutine.createdAt, points: newRoutine.points,
+      frequency: newRoutine.frequency, target_days: newRoutine.targetDays ?? null,
+      completed_dates: [], created_at: newRoutine.createdAt, points: newRoutine.points,
     })
   },
 
@@ -372,6 +455,7 @@ export const useStore = create<AppState>()((set, get) => ({
     if (updates.categoryId !== undefined) dbUpdates.category_id = updates.categoryId
     if (updates.steps !== undefined) dbUpdates.steps = updates.steps
     if (updates.frequency !== undefined) dbUpdates.frequency = updates.frequency
+    if (updates.targetDays !== undefined) dbUpdates.target_days = updates.targetDays.length > 0 ? updates.targetDays : null
     if (updates.points !== undefined) dbUpdates.points = updates.points
     supabase.from('routines').update(dbUpdates).eq('id', id)
   },
@@ -417,6 +501,16 @@ export const useStore = create<AppState>()((set, get) => ({
   deleteRoutine: (id) => {
     set((s) => ({ routines: s.routines.filter((r) => r.id !== id) }))
     supabase.from('routines').delete().eq('id', id)
+  },
+
+  reorderRoutines: (fromIndex, toIndex) => {
+    set((s) => {
+      const routines = [...s.routines]
+      const [item] = routines.splice(fromIndex, 1)
+      routines.splice(toIndex, 0, item)
+      supabase.from('app_config').upsert({ key: 'routines_order', value: routines.map((r) => r.id) })
+      return { routines }
+    })
   },
 
   // ── Rewards ───────────────────────────────────────────────────────────────────

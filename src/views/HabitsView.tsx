@@ -9,19 +9,42 @@ function today() {
   return new Date().toISOString().slice(0, 10)
 }
 
-export default function HabitsView() {
-  const { habits, categories, addHabit, completeHabit, uncompleteHabit, deleteHabit } = useStore()
-  const [showModal, setShowModal] = useState(false)
-  const [form, setForm] = useState({
-    title: '', description: '', categoryId: '', frequency: 'daily' as Frequency,
-    targetDays: [] as number[], color: COLORS[0], dollars: '1',
-  })
+const EMPTY_FORM = {
+  title: '', description: '', categoryId: '', frequency: 'daily' as Frequency,
+  targetDays: [] as number[], color: COLORS[0], dollars: '1',
+}
 
-  const handleAdd = () => {
+export default function HabitsView() {
+  const { habits, categories, addHabit, updateHabit, completeHabit, uncompleteHabit, deleteHabit, reorderHabits } = useStore()
+  const [showModal, setShowModal] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [form, setForm] = useState(EMPTY_FORM)
+
+  const openAdd = () => {
+    setEditingId(null)
+    setForm(EMPTY_FORM)
+    setShowModal(true)
+  }
+
+  const openEdit = (habit: Habit) => {
+    setEditingId(habit.id)
+    setForm({
+      title: habit.title,
+      description: habit.description ?? '',
+      categoryId: habit.categoryId,
+      frequency: habit.frequency,
+      targetDays: habit.targetDays ?? [],
+      color: habit.color,
+      dollars: habit.points.toFixed(2),
+    })
+    setShowModal(true)
+  }
+
+  const handleSave = () => {
     if (!form.title.trim() || !form.categoryId) return
     const dollars = parseFloat(form.dollars)
     if (isNaN(dollars) || dollars < 0) return
-    addHabit({
+    const data = {
       title: form.title.trim(),
       description: form.description.trim() || undefined,
       categoryId: form.categoryId,
@@ -29,8 +52,12 @@ export default function HabitsView() {
       targetDays: form.frequency === 'weekly' ? form.targetDays : undefined,
       color: form.color,
       points: Math.round(dollars * 100) / 100,
-    })
-    setForm({ title: '', description: '', categoryId: '', frequency: 'daily', targetDays: [], color: COLORS[0], dollars: '1' })
+    }
+    if (editingId) {
+      updateHabit(editingId, data)
+    } else {
+      addHabit(data)
+    }
     setShowModal(false)
   }
 
@@ -41,7 +68,7 @@ export default function HabitsView() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold">Habits</h2>
         <button
-          onClick={() => setShowModal(true)}
+          onClick={openAdd}
           className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium px-3 py-1.5 rounded-lg border-0 cursor-pointer transition-colors"
         >
           + Add
@@ -56,13 +83,24 @@ export default function HabitsView() {
       )}
 
       <div className="space-y-3">
-        {habits.map((habit) => (
-          <HabitCard key={habit.id} habit={habit} today={t} onComplete={completeHabit} onUncomplete={uncompleteHabit} onDelete={deleteHabit} />
+        {habits.map((habit, index) => (
+          <HabitCard
+            key={habit.id}
+            habit={habit}
+            today={t}
+            index={index}
+            total={habits.length}
+            onComplete={completeHabit}
+            onUncomplete={uncompleteHabit}
+            onDelete={deleteHabit}
+            onEdit={openEdit}
+            onReorder={reorderHabits}
+          />
         ))}
       </div>
 
       {showModal && (
-        <Modal title="New Habit" onClose={() => setShowModal(false)}>
+        <Modal title={editingId ? 'Edit Habit' : 'New Habit'} onClose={() => setShowModal(false)}>
           <div className="space-y-3">
             <input
               placeholder="Habit name"
@@ -140,11 +178,11 @@ export default function HabitsView() {
               />
             </div>
             <button
-              onClick={handleAdd}
+              onClick={handleSave}
               disabled={!form.title.trim() || !form.categoryId}
               className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white font-medium py-2 rounded-lg border-0 cursor-pointer transition-colors"
             >
-              Add Habit
+              {editingId ? 'Save Changes' : 'Add Habit'}
             </button>
           </div>
         </Modal>
@@ -154,18 +192,19 @@ export default function HabitsView() {
 }
 
 function HabitCard({
-  habit, today, onComplete, onUncomplete, onDelete,
+  habit, today, index, total, onComplete, onUncomplete, onDelete, onEdit, onReorder,
 }: {
-  habit: Habit; today: string
+  habit: Habit; today: string; index: number; total: number
   onComplete: (id: string, date: string) => void
   onUncomplete: (id: string, date: string) => void
   onDelete: (id: string) => void
+  onEdit: (habit: Habit) => void
+  onReorder: (from: number, to: number) => void
 }) {
   const { categories } = useStore()
   const cat = categories.find((c) => c.id === habit.categoryId)
   const completedToday = habit.completedDates.includes(today)
 
-  // Last 7 days for streak visualization
   const last7 = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(Date.now() - (6 - i) * 86400000).toISOString().slice(0, 10)
     return { date: d, done: habit.completedDates.includes(d) }
@@ -175,6 +214,20 @@ function HabitCard({
     <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-start gap-3">
+          <div className="flex flex-col gap-0.5 mt-1">
+            <button
+              onClick={() => onReorder(index, index - 1)}
+              disabled={index === 0}
+              className="text-gray-600 hover:text-gray-400 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
+              title="Move up"
+            >▲</button>
+            <button
+              onClick={() => onReorder(index, index + 1)}
+              disabled={index === total - 1}
+              className="text-gray-600 hover:text-gray-400 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
+              title="Move down"
+            >▼</button>
+          </div>
           <div className="w-3 h-3 rounded-full mt-1.5 flex-shrink-0" style={{ backgroundColor: habit.color }} />
           <div>
             <div className="font-medium text-white text-sm">{habit.title}</div>
@@ -186,23 +239,25 @@ function HabitCard({
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <button
             onClick={() => completedToday ? onUncomplete(habit.id, today) : onComplete(habit.id, today)}
             className={`text-sm px-3 py-1.5 rounded-lg border-0 cursor-pointer font-medium transition-colors ${
-              completedToday
-                ? 'bg-green-500/20 text-green-400'
-                : 'text-white'
+              completedToday ? 'bg-green-500/20 text-green-400' : 'text-white'
             }`}
             style={!completedToday ? { backgroundColor: habit.color } : {}}
           >
             {completedToday ? '✓ Done' : 'Do it'}
           </button>
+          <button
+            onClick={() => onEdit(habit)}
+            className="text-gray-600 hover:text-indigo-400 bg-transparent border-0 cursor-pointer text-sm px-1"
+            title="Edit"
+          >✎</button>
           <button onClick={() => onDelete(habit.id)} className="text-gray-700 hover:text-red-400 bg-transparent border-0 cursor-pointer text-lg">×</button>
         </div>
       </div>
 
-      {/* 7-day mini calendar */}
       <div className="flex gap-1">
         {last7.map(({ date, done }) => (
           <div

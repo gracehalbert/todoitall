@@ -17,15 +17,18 @@ function formatTime(minutes: number): string {
   return m === 0 ? `${h}h` : `${h}h ${m}m`
 }
 
+const EMPTY_FORM = {
+  title: '', description: '', categoryId: '', priority: 'medium' as Priority,
+  dueDate: '', dollars: '1', timeEstimate: '',
+}
+
 export default function TasksView() {
-  const { tasks, categories, addTask, completeTask, uncompleteTask, deleteTask } = useStore()
+  const { tasks, categories, addTask, updateTask, completeTask, uncompleteTask, deleteTask, reorderTasks } = useStore()
   const [showModal, setShowModal] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [filterCat, setFilterCat] = useState<string>('all')
   const [filter, setFilter] = useState<Filter>('active')
-  const [form, setForm] = useState({
-    title: '', description: '', categoryId: '', priority: 'medium' as Priority,
-    dueDate: '', dollars: '1', timeEstimate: '',
-  })
+  const [form, setForm] = useState(EMPTY_FORM)
 
   const filtered = tasks.filter((t) => {
     if (filterCat !== 'all' && t.categoryId !== filterCat) return false
@@ -34,17 +37,40 @@ export default function TasksView() {
     return true
   })
 
-  const sorted = [...filtered].sort((a, b) => {
-    if (a.completed !== b.completed) return a.completed ? 1 : -1
-    const pOrd = { high: 0, medium: 1, low: 2 }
-    return pOrd[a.priority] - pOrd[b.priority]
-  })
+  // Only auto-sort when not in 'all' filter (which shows user-defined order)
+  const displayed = filter === 'all'
+    ? filtered
+    : [...filtered].sort((a, b) => {
+        if (a.completed !== b.completed) return a.completed ? 1 : -1
+        const pOrd = { high: 0, medium: 1, low: 2 }
+        return pOrd[a.priority] - pOrd[b.priority]
+      })
 
-  const handleAdd = () => {
+  const openAdd = () => {
+    setEditingId(null)
+    setForm(EMPTY_FORM)
+    setShowModal(true)
+  }
+
+  const openEdit = (task: Task) => {
+    setEditingId(task.id)
+    setForm({
+      title: task.title,
+      description: task.description ?? '',
+      categoryId: task.categoryId,
+      priority: task.priority,
+      dueDate: task.dueDate ?? '',
+      dollars: task.points.toFixed(2),
+      timeEstimate: task.timeEstimate ? String(task.timeEstimate) : '',
+    })
+    setShowModal(true)
+  }
+
+  const handleSave = () => {
     const dollars = parseFloat(form.dollars)
     if (!form.title.trim() || !form.categoryId || isNaN(dollars) || dollars < 0) return
     const mins = parseInt(form.timeEstimate)
-    addTask({
+    const data = {
       title: form.title.trim(),
       description: form.description.trim() || undefined,
       categoryId: form.categoryId,
@@ -52,9 +78,24 @@ export default function TasksView() {
       dueDate: form.dueDate || undefined,
       timeEstimate: !isNaN(mins) && mins > 0 ? mins : undefined,
       points: Math.round(dollars * 100) / 100,
-    })
-    setForm({ title: '', description: '', categoryId: '', priority: 'medium', dueDate: '', dollars: '1', timeEstimate: '' })
+    }
+    if (editingId) {
+      updateTask(editingId, data)
+    } else {
+      addTask(data)
+    }
     setShowModal(false)
+  }
+
+  // For reordering, we need to map displayed indices back to global indices
+  const handleReorder = (displayedFrom: number, displayedTo: number) => {
+    const fromId = displayed[displayedFrom]?.id
+    const toId = displayed[displayedTo]?.id
+    if (!fromId || !toId) return
+    const globalFrom = tasks.findIndex((t) => t.id === fromId)
+    const globalTo = tasks.findIndex((t) => t.id === toId)
+    if (globalFrom === -1 || globalTo === -1) return
+    reorderTasks(globalFrom, globalTo)
   }
 
   return (
@@ -62,7 +103,7 @@ export default function TasksView() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold">Tasks</h2>
         <button
-          onClick={() => setShowModal(true)}
+          onClick={openAdd}
           className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium px-3 py-1.5 rounded-lg border-0 cursor-pointer transition-colors"
         >
           + Add
@@ -105,7 +146,7 @@ export default function TasksView() {
         ))}
       </div>
 
-      {sorted.length === 0 && (
+      {displayed.length === 0 && (
         <div className="text-center text-gray-600 py-16">
           <div className="text-4xl mb-2">✓</div>
           <p>No tasks here</p>
@@ -113,13 +154,24 @@ export default function TasksView() {
       )}
 
       <div className="space-y-2">
-        {sorted.map((task) => (
-          <TaskCard key={task.id} task={task} onComplete={completeTask} onUncomplete={uncompleteTask} onDelete={deleteTask} />
+        {displayed.map((task, index) => (
+          <TaskCard
+            key={task.id}
+            task={task}
+            index={index}
+            total={displayed.length}
+            showReorder={filter === 'all' && filterCat === 'all'}
+            onComplete={completeTask}
+            onUncomplete={uncompleteTask}
+            onDelete={deleteTask}
+            onEdit={openEdit}
+            onReorder={handleReorder}
+          />
         ))}
       </div>
 
       {showModal && (
-        <Modal title="New Task" onClose={() => setShowModal(false)}>
+        <Modal title={editingId ? 'Edit Task' : 'New Task'} onClose={() => setShowModal(false)}>
           <div className="space-y-3">
             <input
               placeholder="Task title"
@@ -184,11 +236,11 @@ export default function TasksView() {
               className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-indigo-500"
             />
             <button
-              onClick={handleAdd}
+              onClick={handleSave}
               disabled={!form.title.trim() || !form.categoryId}
               className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white font-medium py-2 rounded-lg border-0 cursor-pointer transition-colors"
             >
-              Add Task
+              {editingId ? 'Save Changes' : 'Add Task'}
             </button>
           </div>
         </Modal>
@@ -198,21 +250,36 @@ export default function TasksView() {
 }
 
 function TaskCard({
-  task,
-  onComplete,
-  onUncomplete,
-  onDelete,
+  task, index, total, showReorder, onComplete, onUncomplete, onDelete, onEdit, onReorder,
 }: {
-  task: Task
+  task: Task; index: number; total: number; showReorder: boolean
   onComplete: (id: string) => void
   onUncomplete: (id: string) => void
   onDelete: (id: string) => void
+  onEdit: (task: Task) => void
+  onReorder: (from: number, to: number) => void
 }) {
   const { categories } = useStore()
   const cat = categories.find((c) => c.id === task.categoryId)
 
   return (
-    <div className={`flex items-start gap-3 p-3 rounded-xl border bg-gray-900 ${task.completed ? 'opacity-50' : ''}`}>
+    <div className={`flex items-start gap-2 p-3 rounded-xl border bg-gray-900 ${task.completed ? 'opacity-50' : ''}`}>
+      {showReorder && (
+        <div className="flex flex-col gap-0.5 mt-1 flex-shrink-0">
+          <button
+            onClick={() => onReorder(index, index - 1)}
+            disabled={index === 0}
+            className="text-gray-600 hover:text-gray-400 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
+            title="Move up"
+          >▲</button>
+          <button
+            onClick={() => onReorder(index, index + 1)}
+            disabled={index === total - 1}
+            className="text-gray-600 hover:text-gray-400 disabled:opacity-20 bg-transparent border-0 cursor-pointer leading-none text-xs p-0"
+            title="Move down"
+          >▼</button>
+        </div>
+      )}
       <button
         onClick={() => task.completed ? onUncomplete(task.id) : onComplete(task.id)}
         className={`mt-0.5 w-5 h-5 rounded-full border-2 flex-shrink-0 cursor-pointer transition-colors ${
@@ -246,8 +313,13 @@ function TaskCard({
         </div>
       </div>
       <button
+        onClick={() => onEdit(task)}
+        className="text-gray-600 hover:text-indigo-400 bg-transparent border-0 cursor-pointer text-sm mt-0.5"
+        title="Edit"
+      >✎</button>
+      <button
         onClick={() => onDelete(task.id)}
-        className="text-gray-700 hover:text-red-400 text-lg leading-none bg-transparent border-0 cursor-pointer ml-1"
+        className="text-gray-700 hover:text-red-400 text-lg leading-none bg-transparent border-0 cursor-pointer"
       >
         ×
       </button>
