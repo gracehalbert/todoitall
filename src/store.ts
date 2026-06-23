@@ -80,8 +80,11 @@ export interface AppState {
   loaded: boolean
   todayAssignments: string[] // format: 'task:id' | 'habit:id' | 'routine:id'
   todayOrder: string[]
+  dailyBonusClaimed: boolean
 
   loadFromDB: () => Promise<void>
+  claimDailyBonus: (bonusPoints: number) => void
+
   addToToday: (type: 'task' | 'habit' | 'routine', id: string) => void
   removeFromToday: (type: 'task' | 'habit' | 'routine', id: string) => void
   setTodayOrder: (order: string[]) => void
@@ -200,10 +203,12 @@ export const useStore = create<AppState>()((set, get) => ({
   loaded: false,
   todayAssignments: [],
   todayOrder: [],
+  dailyBonusClaimed: false,
 
   loadFromDB: async () => {
     const todayKey = `today_assignments_${new Date().toISOString().slice(0, 10)}`
-    const [cats, tasks, habits, routines, rewards, config, ordersResult, todayResult, todayOrderResult] = await Promise.all([
+    const dateStr = new Date().toISOString().slice(0, 10)
+    const [cats, tasks, habits, routines, rewards, config, ordersResult, todayResult, todayOrderResult, bonusResult] = await Promise.all([
       supabase.from('categories').select('*'),
       supabase.from('tasks').select('*'),
       supabase.from('habits').select('*'),
@@ -213,6 +218,7 @@ export const useStore = create<AppState>()((set, get) => ({
       supabase.from('app_config').select('*').in('key', ['tasks_order', 'habits_order', 'routines_order']),
       supabase.from('app_config').select('*').eq('key', todayKey).maybeSingle(),
       supabase.from('app_config').select('*').eq('key', `today_order_${new Date().toISOString().slice(0, 10)}`).maybeSingle(),
+      supabase.from('app_config').select('*').eq('key', `daily_bonus_claimed_${dateStr}`).maybeSingle(),
     ])
 
     let categories = (cats.data ?? []).map(rowToCategory)
@@ -247,11 +253,21 @@ export const useStore = create<AppState>()((set, get) => ({
       totalPoints: config.data ? (config.data.value as number) : 0,
       todayAssignments: todayResult.data ? (todayResult.data.value as string[]) : [],
       todayOrder: todayOrderResult.data ? (todayOrderResult.data.value as string[]) : [],
+      dailyBonusClaimed: bonusResult.data ? (bonusResult.data.value as boolean) : false,
       loaded: true,
     })
   },
 
   // ── Today ─────────────────────────────────────────────────────────────────────
+
+  claimDailyBonus: (bonusPoints) => {
+    if (get().dailyBonusClaimed) return
+    const newPoints = get().totalPoints + bonusPoints
+    const dateStr = new Date().toISOString().slice(0, 10)
+    set({ dailyBonusClaimed: true, totalPoints: newPoints })
+    supabase.from('app_config').upsert({ key: `daily_bonus_claimed_${dateStr}`, value: true })
+    supabase.from('app_config').upsert({ key: 'total_points', value: newPoints })
+  },
 
   addToToday: (type, id) => {
     const key = `${type}:${id}`

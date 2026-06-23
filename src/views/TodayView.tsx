@@ -24,6 +24,7 @@ export default function TodayView() {
     updateRoutine,
     todayAssignments, addToToday, removeFromToday,
     todayOrder, setTodayOrder,
+    dailyBonusClaimed, claimDailyBonus,
   } = useStore()
 
   const [showPicker, setShowPicker] = useState(false)
@@ -44,7 +45,7 @@ export default function TodayView() {
     return false
   }
 
-  const isAutoTask = (tk: Task) => !tk.completed && (tk.dueDate === t || tk.dueDate === tomorrow)
+  const isAutoTask = (tk: Task) => !tk.completed && !!tk.dueDate && tk.dueDate <= tomorrow
 
   const isCompleted = (item: TodayItem): boolean => {
     if (item.kind === 'habit') return item.data.completedDates.includes(t)
@@ -118,6 +119,27 @@ export default function TodayView() {
                 style={{ width: `${pct}%`, background: pct === 100 ? '#10b981' : 'linear-gradient(to right, #7c3aed, #d946ef)' }}
               />
             </div>
+            {pct === 100 && (
+              <div className={`mt-3 rounded-xl p-3 flex items-center gap-3 ${dailyBonusClaimed ? 'bg-green-50 border border-green-200' : 'bg-amber-50 border border-amber-200'}`}>
+                <span className="text-2xl">{dailyBonusClaimed ? '🏆' : '🎉'}</span>
+                <div className="flex-1">
+                  <div className="text-sm font-semibold text-gray-800">
+                    {dailyBonusClaimed ? 'Day complete!' : 'Everything done!'}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {dailyBonusClaimed ? 'Bonus claimed · +$5.00' : 'Claim your daily completion bonus'}
+                  </div>
+                </div>
+                {!dailyBonusClaimed && (
+                  <button
+                    onClick={() => claimDailyBonus(5)}
+                    className="bg-amber-400 hover:bg-amber-300 text-white text-xs font-bold px-3 py-1.5 rounded-lg border-0 cursor-pointer transition-colors flex-shrink-0"
+                  >
+                    +$5.00
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -436,6 +458,7 @@ function TodayTaskRow({ task, today, tomorrow, isManual, onComplete, onUncomplet
         </div>
         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
           {cat && <span className="text-xs" style={{ color: cat.color }}>{cat.icon} {cat.name}</span>}
+          {task.dueDate && task.dueDate < today && <span className="text-xs text-red-600 font-medium">Overdue</span>}
           {task.dueDate === today && <span className="text-xs text-rose-500">Due today</span>}
           {task.dueDate === tomorrow && <span className="text-xs text-gray-400">Due tomorrow</span>}
           <span className="text-xs text-green-400">+${task.points.toFixed(2)}</span>

@@ -331,6 +331,11 @@ function RoutineCard({
                 </span>
                 <span className="text-xs text-green-400">+${routine.points.toFixed(2)}</span>
                 <span className="text-xs text-gray-500">{completedCount}/{routine.steps.length}</span>
+                {routine.lastCompletedDate && (
+                  <span className="text-xs text-gray-400">
+                    Last done {new Date(routine.lastCompletedDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </span>
+                )}
               </div>
             </div>
           </div>
