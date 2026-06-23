@@ -76,12 +76,20 @@ export interface CustomReward {
   redeemedCount: number
 }
 
+export interface BadHabit {
+  id: string
+  name: string
+}
+
 export interface AppState {
   categories: Category[]
   tasks: Task[]
   habits: Habit[]
   routines: Routine[]
   customRewards: CustomReward[]
+  badHabits: BadHabit[]
+  badHabitLog: Record<string, boolean> // key: `${habitId}_${date}`
+  moodLog: Record<string, number> // key: date (YYYY-MM-DD), value: 1–5
   totalPoints: number
   loaded: boolean
   todayAssignments: string[] // format: 'task:id' | 'habit:id' | 'routine:id'
@@ -90,6 +98,11 @@ export interface AppState {
 
   loadFromDB: () => Promise<void>
   claimDailyBonus: (bonusPoints: number) => void
+
+  addBadHabit: (name: string) => void
+  deleteBadHabit: (id: string) => void
+  toggleBadHabit: (habitId: string, date: string) => void
+  setMood: (date: string, value: number) => void
 
   addToToday: (type: 'task' | 'habit' | 'routine', id: string) => void
   removeFromToday: (type: 'task' | 'habit' | 'routine', id: string) => void
@@ -204,6 +217,9 @@ export const useStore = create<AppState>()((set, get) => ({
   habits: [],
   routines: [],
   customRewards: [],
+  badHabits: [],
+  badHabitLog: {},
+  moodLog: {},
   totalPoints: 0,
   loaded: false,
   todayAssignments: [],
@@ -213,7 +229,7 @@ export const useStore = create<AppState>()((set, get) => ({
   loadFromDB: async () => {
     const todayKey = `today_assignments_${new Date().toISOString().slice(0, 10)}`
     const dateStr = new Date().toISOString().slice(0, 10)
-    const [cats, tasks, habits, routines, rewards, config, ordersResult, todayResult, todayOrderResult, bonusResult] = await Promise.all([
+    const [cats, tasks, habits, routines, rewards, config, ordersResult, todayResult, todayOrderResult, bonusResult, badHabitsResult, wellnessLogResult] = await Promise.all([
       supabase.from('categories').select('*'),
       supabase.from('tasks').select('*'),
       supabase.from('habits').select('*'),
@@ -224,6 +240,8 @@ export const useStore = create<AppState>()((set, get) => ({
       supabase.from('app_config').select('*').eq('key', todayKey).maybeSingle(),
       supabase.from('app_config').select('*').eq('key', `today_order_${new Date().toISOString().slice(0, 10)}`).maybeSingle(),
       supabase.from('app_config').select('*').eq('key', `daily_bonus_claimed_${dateStr}`).maybeSingle(),
+      supabase.from('app_config').select('*').eq('key', 'bad_habits_list').maybeSingle(),
+      supabase.from('app_config').select('*').like('key', 'wellness_%'),
     ])
 
     let categories = (cats.data ?? []).map(rowToCategory)
@@ -249,12 +267,28 @@ export const useStore = create<AppState>()((set, get) => ({
       return [...ordered, ...rest]
     }
 
+    const badHabitLog: Record<string, boolean> = {}
+    const moodLog: Record<string, number> = {}
+    for (const row of wellnessLogResult.data ?? []) {
+      const key = row.key as string
+      if (key.startsWith('wellness_mood_')) {
+        const date = key.replace('wellness_mood_', '')
+        moodLog[date] = row.value as number
+      } else if (key.startsWith('wellness_bh_')) {
+        const sub = key.replace('wellness_bh_', '')
+        badHabitLog[sub] = row.value as boolean
+      }
+    }
+
     set({
       categories,
       tasks: applyOrder((tasks.data ?? []).map(rowToTask), 'tasks_order'),
       habits: applyOrder((habits.data ?? []).map(rowToHabit), 'habits_order'),
       routines: applyOrder((routines.data ?? []).map(rowToRoutine), 'routines_order'),
       customRewards: (rewards.data ?? []).map(rowToReward),
+      badHabits: badHabitsResult.data ? (badHabitsResult.data.value as BadHabit[]) : [],
+      badHabitLog,
+      moodLog,
       totalPoints: config.data ? (config.data.value as number) : 0,
       todayAssignments: todayResult.data ? (todayResult.data.value as string[]) : [],
       todayOrder: todayOrderResult.data ? (todayOrderResult.data.value as string[]) : [],
@@ -571,6 +605,43 @@ export const useStore = create<AppState>()((set, get) => ({
     }))
     supabase.from('custom_rewards').update({ redeemed_count: newCount }).eq('id', id).then(dbErr('redeemReward'))
     supabase.from('app_config').upsert({ key: 'total_points', value: newPoints }).then(dbErr('redeemReward:points'))
+  },
+
+  // ── Wellness ──────────────────────────────────────────────────────────────────
+
+  addBadHabit: (name) => {
+    const newHabit: BadHabit = { id: uuid(), name }
+    set((s) => {
+      const updated = [...s.badHabits, newHabit]
+      supabase.from('app_config').upsert({ key: 'bad_habits_list', value: updated }).then(dbErr('addBadHabit'))
+      return { badHabits: updated }
+    })
+  },
+
+  deleteBadHabit: (id) => {
+    set((s) => {
+      const updated = s.badHabits.filter((h) => h.id !== id)
+      supabase.from('app_config').upsert({ key: 'bad_habits_list', value: updated }).then(dbErr('deleteBadHabit'))
+      return { badHabits: updated }
+    })
+  },
+
+  toggleBadHabit: (habitId, date) => {
+    const key = `${habitId}_${date}`
+    set((s) => {
+      const current = s.badHabitLog[key] ?? false
+      const updated = { ...s.badHabitLog, [key]: !current }
+      supabase.from('app_config').upsert({ key: `wellness_bh_${key}`, value: !current }).then(dbErr('toggleBadHabit'))
+      return { badHabitLog: updated }
+    })
+  },
+
+  setMood: (date, value) => {
+    set((s) => {
+      const updated = { ...s.moodLog, [date]: value }
+      supabase.from('app_config').upsert({ key: `wellness_mood_${date}`, value }).then(dbErr('setMood'))
+      return { moodLog: updated }
+    })
   },
 }))
 

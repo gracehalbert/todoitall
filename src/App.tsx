@@ -5,9 +5,11 @@ import HabitsView from './views/HabitsView'
 import RoutinesView from './views/RoutinesView'
 import RewardsView from './views/RewardsView'
 import SettingsView from './views/SettingsView'
+import StatsView from './views/StatsView'
+import WellnessView from './views/WellnessView'
 import { useStore } from './store'
 
-type Tab = 'today' | 'tasks' | 'habits' | 'routines' | 'rewards' | 'settings'
+type Tab = 'today' | 'tasks' | 'habits' | 'routines' | 'rewards' | 'stats' | 'wellness' | 'settings'
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'today', label: 'Today', icon: '☀️' },
@@ -15,6 +17,8 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'habits', label: 'Habits', icon: '🔄' },
   { id: 'routines', label: 'Routines', icon: '📋' },
   { id: 'rewards', label: 'Rewards', icon: '🏆' },
+  { id: 'stats', label: 'Stats', icon: '📊' },
+  { id: 'wellness', label: 'Wellness', icon: '🌿' },
   { id: 'settings', label: 'Settings', icon: '⚙️' },
 ]
 
@@ -50,6 +54,8 @@ export default function App() {
         {tab === 'habits' && <HabitsView />}
         {tab === 'routines' && <RoutinesView />}
         {tab === 'rewards' && <RewardsView />}
+        {tab === 'stats' && <StatsView />}
+        {tab === 'wellness' && <WellnessView />}
         {tab === 'settings' && <SettingsView />}
       </main>
 
