@@ -57,6 +57,18 @@ export default function RoutinesView() {
 
   const openAdd = () => { setEditingId(null); setForm(EMPTY_FORM); setStepInput(''); setShowModal(true) }
 
+  const cloneRoutine = (routine: Routine) => {
+    addRoutine({
+      title: `${routine.title} (copy)`,
+      description: routine.description,
+      categoryId: routine.categoryId,
+      frequency: routine.frequency,
+      targetDays: routine.targetDays,
+      steps: routine.steps.map((s) => ({ ...s, id: uuid(), completed: false })),
+      points: routine.points,
+    })
+  }
+
   const openEdit = (routine: Routine) => {
     setEditingId(routine.id)
     setForm({
@@ -162,6 +174,7 @@ export default function RoutinesView() {
                 onToggleStep={toggleRoutineStep}
                 onDelete={deleteRoutine}
                 onEdit={openEdit}
+                onClone={cloneRoutine}
                 onStepDragEnd={(event) => handleStepDragEnd(r.id, event)}
               />
             ))}
@@ -335,7 +348,7 @@ function SortableStep({ step, completedToday, onToggle }: {
 }
 
 function RoutineCard({
-  routine, expanded, onToggleExpand, onComplete, onReset, onToggleStep, onDelete, onEdit, onStepDragEnd,
+  routine, expanded, onToggleExpand, onComplete, onReset, onToggleStep, onDelete, onEdit, onClone, onStepDragEnd,
 }: {
   routine: Routine
   expanded: boolean
@@ -345,6 +358,7 @@ function RoutineCard({
   onToggleStep: (routineId: string, stepId: string) => void
   onDelete: (id: string) => void
   onEdit: (routine: Routine) => void
+  onClone: (routine: Routine) => void
   onStepDragEnd: (event: DragEndEvent) => void
 }) {
   const { categories } = useStore()
@@ -405,6 +419,7 @@ function RoutineCard({
               {expanded ? '▲' : '▼'}
             </button>
             <button onClick={() => onEdit(routine)} className="text-gray-400 hover:text-violet-500 bg-transparent border-0 cursor-pointer text-sm" title="Edit">✎</button>
+            <button onClick={() => onClone(routine)} className="text-gray-300 hover:text-violet-400 bg-transparent border-0 cursor-pointer text-sm" title="Clone">⧉</button>
             <button onClick={() => onDelete(routine.id)} className="text-gray-300 hover:text-red-400 bg-transparent border-0 cursor-pointer text-lg">×</button>
           </div>
         </div>

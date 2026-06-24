@@ -38,8 +38,8 @@ export default function App() {
 
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-violet-50 via-fuchsia-50 to-sky-50 text-gray-900">
-      <header className="bg-gradient-to-r from-violet-600 to-fuchsia-500 px-4 py-3 shadow-md">
-        <div className="max-w-2xl mx-auto flex items-center justify-between">
+      <header className="bg-gradient-to-r from-violet-600 to-fuchsia-500 shadow-md" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))', paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
+        <div className="max-w-2xl mx-auto flex items-center justify-between px-4 pb-3">
           <h1 className="text-lg font-bold text-white">TodoItAll</h1>
           <div className="flex items-center gap-1 bg-white/20 border border-white/30 rounded-full px-3 py-1">
             <span className="text-white text-sm font-bold">$</span>
@@ -59,7 +59,7 @@ export default function App() {
         {tab === 'settings' && <SettingsView />}
       </main>
 
-      <nav className="bg-white border-t border-gray-100 shadow-lg">
+      <nav className="sticky bottom-0 bg-white border-t border-gray-100 shadow-lg" style={{ paddingBottom: 'env(safe-area-inset-bottom)', paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
         <div className="max-w-2xl mx-auto flex">
           {TABS.map((t) => (
             <button
