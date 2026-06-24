@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useStore, Habit, Routine, Task } from '../store'
 import { localDateStr } from '../lib/date'
 import Modal from '../components/Modal'
@@ -35,10 +35,30 @@ export default function TodayView() {
     todayAssignments, addToToday, removeFromToday,
     todayOrder, setTodayOrder,
     dailyBonusClaimed, claimDailyBonus,
+    addTask,
   } = useStore()
 
   const [showPicker, setShowPicker] = useState(false)
   const [pickerTab, setPickerTab] = useState<'tasks' | 'habits' | 'routines'>('tasks')
+  const [quickTitle, setQuickTitle] = useState('')
+  const [quickCategoryId, setQuickCategoryId] = useState('')
+  const [quickPriority, setQuickPriority] = useState<'low' | 'medium' | 'high'>('medium')
+  const quickInputRef = useRef<HTMLInputElement>(null)
+
+  const handleQuickAdd = () => {
+    const title = quickTitle.trim()
+    if (!title || !quickCategoryId) return
+    const newTask = {
+      title,
+      categoryId: quickCategoryId,
+      priority: quickPriority,
+      dueDate: todayStr(),
+      points: 0,
+    }
+    addTask(newTask)
+    setQuickTitle('')
+    quickInputRef.current?.focus()
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -61,7 +81,7 @@ export default function TodayView() {
     return false
   }
 
-  const isAutoTask = (tk: Task) => !tk.completed && !!tk.dueDate && tk.dueDate <= tomorrow
+  const isAutoTask = (tk: Task) => !tk.completed && !!tk.dueDate && tk.dueDate <= t
 
   const isCompleted = (item: TodayItem): boolean => {
     if (item.kind === 'habit') return item.data.completedDates.includes(t)
@@ -257,8 +277,47 @@ export default function TodayView() {
           </div>
           <div className="space-y-2 max-h-80 overflow-y-auto">
             {pickerTab === 'tasks' && (
-              pickerTasks.length === 0
-                ? <p className="text-center text-gray-400 text-sm py-6">No other incomplete tasks</p>
+              <>
+                <div className="border border-dashed border-violet-200 rounded-xl p-3 bg-violet-50/50 space-y-2">
+                  <input
+                    ref={quickInputRef}
+                    placeholder="New task name..."
+                    value={quickTitle}
+                    onChange={(e) => setQuickTitle(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleQuickAdd() }}
+                    className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-violet-400"
+                  />
+                  <div className="flex gap-2">
+                    <select
+                      value={quickCategoryId}
+                      onChange={(e) => setQuickCategoryId(e.target.value)}
+                      className="flex-1 bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-xs text-gray-700 focus:outline-none focus:border-violet-400"
+                    >
+                      <option value="">Category</option>
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
+                      ))}
+                    </select>
+                    <select
+                      value={quickPriority}
+                      onChange={(e) => setQuickPriority(e.target.value as 'low' | 'medium' | 'high')}
+                      className="bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-xs text-gray-700 focus:outline-none focus:border-violet-400"
+                    >
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                    </select>
+                    <button
+                      onClick={handleQuickAdd}
+                      disabled={!quickTitle.trim() || !quickCategoryId}
+                      className="bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white text-xs font-medium px-3 py-1.5 rounded-lg border-0 cursor-pointer transition-colors"
+                    >
+                      Add
+                    </button>
+                  </div>
+                </div>
+                {pickerTasks.length === 0
+                ? <p className="text-center text-gray-400 text-sm py-4">No other incomplete tasks</p>
                 : pickerTasks.map((task) => {
                     const added = manualIds.has(`task:${task.id}`)
                     const cat = categories.find((c) => c.id === task.categoryId)
@@ -271,7 +330,8 @@ export default function TodayView() {
                         onToggle={() => added ? removeFromToday('task', task.id) : addToToday('task', task.id)}
                       />
                     )
-                  })
+                  })}
+              </>
             )}
             {pickerTab === 'habits' && (
               pickerHabits.length === 0
@@ -493,7 +553,7 @@ function TodayRoutineRow({ routine, today, isManual, onToggleStep, onComplete, o
   const completedCount = routine.steps.filter((s) => s.completed).length
   const allDone = completedCount === routine.steps.length
   const progress = routine.steps.length > 0 ? (completedCount / routine.steps.length) * 100 : 0
-  const [expanded, setExpanded] = useState(!completedToday)
+  const [expanded, setExpanded] = useState(false)
 
   const stepSensors = useSensors(
     useSensor(PointerSensor),

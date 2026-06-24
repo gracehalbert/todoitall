@@ -10,7 +10,7 @@ function dbErr(op: string) {
 }
 
 export type Priority = 'low' | 'medium' | 'high'
-export type Frequency = 'daily' | 'weekly' | 'monthly'
+export type Frequency = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'semi-annual' | 'annual'
 
 export interface Category {
   id: string

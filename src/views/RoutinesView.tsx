@@ -15,6 +15,7 @@ import { CSS } from '@dnd-kit/utilities'
 
 const WEEK_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const MONTH_DAYS = Array.from({ length: 31 }, (_, i) => i + 1)
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 function today() {
   return localDateStr()
@@ -215,6 +216,9 @@ export default function RoutinesView() {
               <option value="daily">Daily</option>
               <option value="weekly">Weekly</option>
               <option value="monthly">Monthly</option>
+              <option value="quarterly">Quarterly</option>
+              <option value="semi-annual">Semi-Annual</option>
+              <option value="annual">Annual</option>
             </select>
 
             {form.frequency === 'weekly' && (
@@ -235,6 +239,30 @@ export default function RoutinesView() {
                       }`}
                     >
                       {d}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {(form.frequency === 'quarterly' || form.frequency === 'semi-annual' || form.frequency === 'annual') && (
+              <div>
+                <label className="text-xs text-gray-400 mb-1.5 block">Target months <span className="text-gray-600">(auto-appears in these months)</span></label>
+                <div className="flex gap-1 flex-wrap">
+                  {MONTHS.map((m, i) => (
+                    <button
+                      key={m} type="button"
+                      onClick={() => setForm({
+                        ...form,
+                        targetDays: form.targetDays.includes(i + 1)
+                          ? form.targetDays.filter((x) => x !== i + 1)
+                          : [...form.targetDays, i + 1],
+                      })}
+                      className={`text-xs px-2 py-1 rounded border-0 cursor-pointer transition-colors ${
+                        form.targetDays.includes(i + 1) ? 'bg-violet-600 text-white' : 'bg-gray-100 text-gray-600'
+                      }`}
+                    >
+                      {m}
                     </button>
                   ))}
                 </div>
@@ -398,6 +426,9 @@ function RoutineCard({
                     ? routine.targetDays.map((d) => WEEK_DAYS[d]).join(', ')
                     : routine.frequency === 'monthly' && routine.targetDays && routine.targetDays.length > 0
                     ? routine.targetDays.sort((a, b) => a - b).map((d) => `${d}`).join(', ')
+                    : (routine.frequency === 'quarterly' || routine.frequency === 'semi-annual' || routine.frequency === 'annual') && routine.targetDays && routine.targetDays.length > 0
+                    ? routine.targetDays.sort((a, b) => a - b).map((m) => MONTHS[m - 1]).join(', ')
+                    : routine.frequency === 'semi-annual' ? 'Semi-Annual'
                     : routine.frequency}
                 </span>
                 <span className="text-xs text-green-400">+${routine.points.toFixed(2)}</span>
