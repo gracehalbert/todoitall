@@ -1,4 +1,5 @@
 import { useStore } from '../store'
+import { localDateStr } from '../lib/date'
 
 function getWeekDates() {
   const today = new Date()
@@ -8,7 +9,7 @@ function getWeekDates() {
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday)
     d.setDate(monday.getDate() + i)
-    return d.toISOString().slice(0, 10)
+    return localDateStr(d)
   })
 }
 
@@ -16,18 +17,18 @@ function getLastNDates(n: number) {
   return Array.from({ length: n }, (_, i) => {
     const d = new Date()
     d.setDate(d.getDate() - (n - 1 - i))
-    return d.toISOString().slice(0, 10)
+    return localDateStr(d)
   })
 }
 
 function getMonthDates() {
   const today = new Date()
-  const first = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10)
-  const last = today.toISOString().slice(0, 10)
+  const first = new Date(today.getFullYear(), today.getMonth(), 1)
+  const last = localDateStr(today)
   const dates = []
   const cur = new Date(first)
-  while (cur.toISOString().slice(0, 10) <= last) {
-    dates.push(cur.toISOString().slice(0, 10))
+  while (localDateStr(cur) <= last) {
+    dates.push(localDateStr(cur))
     cur.setDate(cur.getDate() + 1)
   }
   return dates

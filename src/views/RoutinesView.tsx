@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useStore, Routine, Frequency } from '../store'
+import { localDateStr } from '../lib/date'
 import Modal from '../components/Modal'
 import { v4 as uuid } from 'uuid'
 import {
@@ -16,7 +17,7 @@ const WEEK_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const MONTH_DAYS = Array.from({ length: 31 }, (_, i) => i + 1)
 
 function today() {
-  return new Date().toISOString().slice(0, 10)
+  return localDateStr()
 }
 
 const EMPTY_FORM = {

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { v4 as uuid } from 'uuid'
 import { supabase } from './lib/supabase'
+import { localDateStr } from './lib/date'
 
 function dbErr(op: string) {
   return (res: { error: { message: string } | null }) => {
@@ -227,8 +228,8 @@ export const useStore = create<AppState>()((set, get) => ({
   dailyBonusClaimed: false,
 
   loadFromDB: async () => {
-    const todayKey = `today_assignments_${new Date().toISOString().slice(0, 10)}`
-    const dateStr = new Date().toISOString().slice(0, 10)
+    const todayKey = `today_assignments_${localDateStr()}`
+    const dateStr = localDateStr()
     const [cats, tasks, habits, routines, rewards, config, ordersResult, todayResult, todayOrderResult, bonusResult, badHabitsResult, wellnessLogResult] = await Promise.all([
       supabase.from('categories').select('*'),
       supabase.from('tasks').select('*'),
@@ -238,7 +239,7 @@ export const useStore = create<AppState>()((set, get) => ({
       supabase.from('app_config').select('*').eq('key', 'total_points').maybeSingle(),
       supabase.from('app_config').select('*').in('key', ['tasks_order', 'habits_order', 'routines_order']),
       supabase.from('app_config').select('*').eq('key', todayKey).maybeSingle(),
-      supabase.from('app_config').select('*').eq('key', `today_order_${new Date().toISOString().slice(0, 10)}`).maybeSingle(),
+      supabase.from('app_config').select('*').eq('key', `today_order_${localDateStr()}`).maybeSingle(),
       supabase.from('app_config').select('*').eq('key', `daily_bonus_claimed_${dateStr}`).maybeSingle(),
       supabase.from('app_config').select('*').eq('key', 'bad_habits_list').maybeSingle(),
       supabase.from('app_config').select('*').like('key', 'wellness_%'),
@@ -302,7 +303,7 @@ export const useStore = create<AppState>()((set, get) => ({
   claimDailyBonus: (bonusPoints) => {
     if (get().dailyBonusClaimed) return
     const newPoints = get().totalPoints + bonusPoints
-    const dateStr = new Date().toISOString().slice(0, 10)
+    const dateStr = localDateStr()
     set({ dailyBonusClaimed: true, totalPoints: newPoints })
     supabase.from('app_config').upsert({ key: `daily_bonus_claimed_${dateStr}`, value: true }).then(dbErr('claimDailyBonus:bonus'))
     supabase.from('app_config').upsert({ key: 'total_points', value: newPoints }).then(dbErr('claimDailyBonus:points'))
@@ -313,7 +314,7 @@ export const useStore = create<AppState>()((set, get) => ({
     set((s) => {
       if (s.todayAssignments.includes(key)) return s
       const updated = [...s.todayAssignments, key]
-      const todayKey = `today_assignments_${new Date().toISOString().slice(0, 10)}`
+      const todayKey = `today_assignments_${localDateStr()}`
       supabase.from('app_config').upsert({ key: todayKey, value: updated }).then(dbErr('addToToday'))
       return { todayAssignments: updated }
     })
@@ -324,7 +325,7 @@ export const useStore = create<AppState>()((set, get) => ({
     set((s) => {
       const updatedAssignments = s.todayAssignments.filter((k) => k !== key)
       const updatedOrder = s.todayOrder.filter((k) => k !== key)
-      const dateStr = new Date().toISOString().slice(0, 10)
+      const dateStr = localDateStr()
       supabase.from('app_config').upsert({ key: `today_assignments_${dateStr}`, value: updatedAssignments }).then(dbErr('removeFromToday:assignments'))
       supabase.from('app_config').upsert({ key: `today_order_${dateStr}`, value: updatedOrder }).then(dbErr('removeFromToday:order'))
       return { todayAssignments: updatedAssignments, todayOrder: updatedOrder }
@@ -333,7 +334,7 @@ export const useStore = create<AppState>()((set, get) => ({
 
   setTodayOrder: (order) => {
     set({ todayOrder: order })
-    const dateStr = new Date().toISOString().slice(0, 10)
+    const dateStr = localDateStr()
     supabase.from('app_config').upsert({ key: `today_order_${dateStr}`, value: order }).then(dbErr('setTodayOrder'))
   },
 
@@ -648,8 +649,9 @@ export const useStore = create<AppState>()((set, get) => ({
 function calcStreak(dates: string[], frequency: Frequency): number {
   if (dates.length === 0) return 0
   const sorted = [...dates].sort().reverse()
-  const today = new Date().toISOString().slice(0, 10)
-  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+  const today = localDateStr()
+  const yd = new Date(); yd.setDate(yd.getDate() - 1)
+  const yesterday = localDateStr(yd)
 
   if (frequency === 'daily') {
     if (sorted[0] !== today && sorted[0] !== yesterday) return 0

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useStore } from '../store'
+import { localDateStr } from '../lib/date'
 
 const MOODS = [
   { value: 5, emoji: '😄', label: 'Great' },
@@ -10,7 +11,7 @@ const MOODS = [
 ]
 
 function today() {
-  return new Date().toISOString().slice(0, 10)
+  return localDateStr()
 }
 
 function formatDate(dateStr: string) {
@@ -29,7 +30,7 @@ export default function WellnessView() {
   const last14 = Array.from({ length: 14 }, (_, i) => {
     const d = new Date()
     d.setDate(d.getDate() - (13 - i))
-    return d.toISOString().slice(0, 10)
+    return localDateStr(d)
   })
 
   function handleAddHabit() {

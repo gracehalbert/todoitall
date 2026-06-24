@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useStore, Habit, Frequency } from '../store'
+import { localDateStr } from '../lib/date'
 import Modal from '../components/Modal'
 import {
   DndContext, closestCenter, PointerSensor, KeyboardSensor,
@@ -15,7 +16,7 @@ const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4'
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 function today() {
-  return new Date().toISOString().slice(0, 10)
+  return localDateStr()
 }
 
 const EMPTY_FORM = {
@@ -220,8 +221,9 @@ function HabitCard({
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }
 
   const last7 = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(Date.now() - (6 - i) * 86400000).toISOString().slice(0, 10)
-    return { date: d, done: habit.completedDates.includes(d) }
+    const d = new Date(); d.setDate(d.getDate() - (6 - i))
+    const dateStr = localDateStr(d)
+    return { date: dateStr, done: habit.completedDates.includes(dateStr) }
   })
 
   return (

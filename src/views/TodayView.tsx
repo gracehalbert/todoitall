@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useStore, Habit, Routine, Task } from '../store'
+import { localDateStr } from '../lib/date'
 import Modal from '../components/Modal'
 import {
   DndContext, closestCenter, PointerSensor, KeyboardSensor,
@@ -12,7 +13,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 
 function todayStr() {
-  return new Date().toISOString().slice(0, 10)
+  return localDateStr()
 }
 
 function formatDate(iso: string) {
@@ -47,7 +48,8 @@ export default function TodayView() {
   const t = todayStr()
   const dow = new Date().getDay()
   const dom = new Date().getDate()
-  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10)
+  const tomorrowDate = new Date(); tomorrowDate.setDate(tomorrowDate.getDate() + 1)
+  const tomorrow = localDateStr(tomorrowDate)
 
   const isAutoHabit = (h: Habit) =>
     h.frequency === 'daily' || (h.frequency === 'weekly' && (h.targetDays ?? []).includes(dow))
